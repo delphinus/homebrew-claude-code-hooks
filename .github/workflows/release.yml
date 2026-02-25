@@ -45,25 +45,22 @@ jobs:
             url "${REPO}.git", tag: "v${VERSION}", revision: "${REVISION}"
             head "${REPO}.git", branch: "main"
 
-            depends_on "jq"
+            depends_on "go" => :build
 
             def install
-              bin.install "bin/claude-obsidian-save"
-              bin.install "bin/claude-obsidian-backfill-links"
-              bin.install "bin/claude-setup-hooks"
-              bin.install "bin/claude-notify"
+              system "go", "build", *std_go_args(ldflags: "-s -w"), "./cmd/claude-code-hooks"
               (share/"claude-code-hooks").install "share/hooks.json"
             end
 
             def caveats
               <<~EOS
-                hooks.json をインストールしました。以下のコマンドで Claude Code に適用してください:
+                インストール後、以下のコマンドで Claude Code に hooks を適用してください:
 
-                  claude-setup-hooks
+                  claude-code-hooks setup
 
                 差分を事前に確認するには:
 
-                  claude-setup-hooks --diff
+                  claude-code-hooks setup --diff
               EOS
             end
           end

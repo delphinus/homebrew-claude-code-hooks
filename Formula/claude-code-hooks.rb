@@ -1,28 +1,25 @@
 class ClaudeCodeHooks < Formula
   desc "Claude Code hooks for Obsidian integration and notifications"
   homepage "https://github.com/delphinus/homebrew-claude-code-hooks"
-  url "https://github.com/delphinus/homebrew-claude-code-hooks.git", tag: "v1.0.2", revision: "0a27fc7cf12d823174944ab8337fd904ae17ff86"
+  url "https://github.com/delphinus/homebrew-claude-code-hooks.git", tag: "v2.0.0", revision: "0000000000000000000000000000000000000000"
   head "https://github.com/delphinus/homebrew-claude-code-hooks.git", branch: "main"
 
-  depends_on "jq"
+  depends_on "go" => :build
 
   def install
-    bin.install "bin/claude-obsidian-save"
-    bin.install "bin/claude-obsidian-backfill-links"
-    bin.install "bin/claude-setup-hooks"
-    bin.install "bin/claude-notify"
+    system "go", "build", *std_go_args(ldflags: "-s -w"), "./cmd/claude-code-hooks"
     (share/"claude-code-hooks").install "share/hooks.json"
   end
 
   def caveats
     <<~EOS
-      hooks.json をインストールしました。以下のコマンドで Claude Code に適用してください:
+      インストール後、以下のコマンドで Claude Code に hooks を適用してください:
 
-        claude-setup-hooks
+        claude-code-hooks setup
 
       差分を事前に確認するには:
 
-        claude-setup-hooks --diff
+        claude-code-hooks setup --diff
     EOS
   end
 end

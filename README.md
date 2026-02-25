@@ -1,18 +1,18 @@
 # claude-code-hooks
 
-Claude Code での会話やツール操作を Obsidian ノートに自動記録するための仕組み。以下のスクリプトで構成される。
+Claude Code での会話やツール操作を Obsidian ノートに自動記録するための Go バイナリ。4つのサブコマンドで構成される。
 
-- **`claude-obsidian-save`** — Claude Code のフックから呼び出され、イベントをノートに追記する
-- **`claude-obsidian-backfill-links`** — 既存ノートに session リンクをバックフィルする
-- **`claude-setup-hooks`** — フック設定を `~/.claude/settings.json` に適用する
-- **`claude-notify`** — macOS 通知を表示するヘルパー（WezTerm のフォーカス検出対応）
+- **`claude-code-hooks save`** — Claude Code のフックから呼び出され、イベントをノートに追記する
+- **`claude-code-hooks backfill`** — 既存ノートに session リンクをバックフィルする
+- **`claude-code-hooks setup`** — フック設定を `~/.claude/settings.json` に適用する
+- **`claude-code-hooks notify`** — macOS 通知を表示するヘルパー（WezTerm のフォーカス検出対応）
 
 ## インストール
 
 ```bash
 brew tap delphinus/claude-code-hooks
 brew install claude-code-hooks
-claude-setup-hooks
+claude-code-hooks setup
 ```
 
 開発版（HEAD）をインストールする場合:
@@ -23,19 +23,19 @@ brew install --HEAD claude-code-hooks
 
 ## 使い方
 
-### claude-setup-hooks
+### claude-code-hooks setup
 
 hooks.json の内容を `~/.claude/settings.json` の `hooks` キーにマージする。`env` や `model` など端末固有の設定はそのまま保持される。
 
 ```bash
 # 差分を確認（適用しない）
-claude-setup-hooks --diff
+claude-code-hooks setup --diff
 
 # hooks を適用
-claude-setup-hooks
+claude-code-hooks setup
 ```
 
-### claude-obsidian-save
+### claude-code-hooks save
 
 Claude Code の各フックイベントに応じて、セッションごとに1つの Obsidian ノート（`.md`）を作成し、時系列でイベントを追記していく。
 
@@ -82,30 +82,35 @@ YYYYMMDD-HHMMSS-SSID-タイトル.md
 - `SSID`: セッション ID の先頭4文字
 - タイトル: 最初のユーザープロンプトの先頭50文字から生成
 
-### claude-obsidian-backfill-links
+### claude-code-hooks backfill
 
 既存の Obsidian ノートに対して、同じ `session_id` を持つノート間の `related` リンクをバックフィルする。何度実行しても安全（冪等）。
 
 ```bash
 # 変更内容のプレビュー（ファイルは変更しない）
-claude-obsidian-backfill-links --dry-run
+claude-code-hooks backfill --dry-run
 
 # 実行
-claude-obsidian-backfill-links
+claude-code-hooks backfill
 ```
 
-### claude-notify
+### claude-code-hooks notify
 
 macOS の通知を表示する。WezTerm 使用時は、現在のペインがフォーカスされている場合は通知を抑制する。
 
 ```bash
-claude-notify 'タイトル' 'メッセージ'
+claude-code-hooks notify 'タイトル' 'メッセージ'
 ```
+
+## 環境変数
+
+| 変数名 | 説明 |
+|---|---|
+| `CLAUDE_OBSIDIAN_VAULT` | Obsidian vault パスの上書き（デフォルト: iCloud 上の `Notes/Claude Code`） |
 
 ## 前提条件
 
 - macOS + iCloud 同期の Obsidian vault（`~/Library/Mobile Documents/iCloud~md~obsidian/Documents/Notes/Claude Code/`）
-- `jq`（Homebrew で自動インストール）
 - `claude` CLI（SessionEnd での要約生成に使用）
 
 ## リリース
@@ -113,8 +118,8 @@ claude-notify 'タイトル' 'メッセージ'
 バージョンは [Semantic Versioning](https://semver.org/) に従う。新しいバージョンをリリースするには:
 
 ```bash
-git tag v1.x.x
-git push origin v1.x.x
+git tag v2.x.x
+git push origin v2.x.x
 ```
 
 タグをプッシュすると GitHub Actions が自動的に以下を実行する:

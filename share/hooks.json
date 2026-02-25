@@ -4,7 +4,7 @@
       "hooks": [
         {
           "type": "command",
-          "command": "claude-obsidian-save"
+          "command": "claude-code-hooks save"
         }
       ]
     }
@@ -14,11 +14,11 @@
       "hooks": [
         {
           "type": "command",
-          "command": "claude-notify 'Claude Code' '作業が完了しました'"
+          "command": "claude-code-hooks notify 'Claude Code' '作業が完了しました'"
         },
         {
           "type": "command",
-          "command": "claude-obsidian-save"
+          "command": "claude-code-hooks save"
         }
       ]
     }
@@ -28,13 +28,13 @@
       "hooks": [
         {
           "type": "command",
-          "command": "claude-obsidian-save",
+          "command": "claude-code-hooks save",
           "timeout": 120,
           "statusMessage": "Obsidian にセッションを保存中..."
         },
         {
           "type": "command",
-          "command": "claude-notify 'Claude Code' 'セッションの保存が完了しました'"
+          "command": "claude-code-hooks notify 'Claude Code' 'セッションの保存が完了しました'"
         }
       ]
     }
@@ -45,7 +45,7 @@
       "hooks": [
         {
           "type": "command",
-          "command": "claude-obsidian-save"
+          "command": "claude-code-hooks save"
         }
       ]
     },
@@ -54,7 +54,7 @@
       "hooks": [
         {
           "type": "command",
-          "command": "claude-obsidian-save"
+          "command": "claude-code-hooks save"
         }
       ]
     },
@@ -63,7 +63,7 @@
       "hooks": [
         {
           "type": "command",
-          "command": "claude-obsidian-save"
+          "command": "claude-code-hooks save"
         }
       ]
     },
@@ -72,7 +72,7 @@
       "hooks": [
         {
           "type": "command",
-          "command": "claude-obsidian-save"
+          "command": "claude-code-hooks save"
         }
       ]
     },
@@ -81,7 +81,7 @@
       "hooks": [
         {
           "type": "command",
-          "command": "claude-obsidian-save"
+          "command": "claude-code-hooks save"
         }
       ]
     }
@@ -91,7 +91,7 @@
       "hooks": [
         {
           "type": "command",
-          "command": "claude-notify 'Claude Code' 'パーミッションが必要です'"
+          "command": "claude-code-hooks notify 'Claude Code' 'パーミッションが必要です'"
         }
       ]
     }
@@ -102,7 +102,7 @@
       "hooks": [
         {
           "type": "command",
-          "command": "claude-notify 'Claude Code' 'ユーザー確認が必要です'"
+          "command": "claude-code-hooks notify 'Claude Code' 'ユーザー確認が必要です'"
         }
       ]
     },
@@ -111,7 +111,7 @@
       "hooks": [
         {
           "type": "command",
-          "command": "claude-notify 'Claude Code' '待機中です'"
+          "command": "claude-code-hooks notify 'Claude Code' '待機中です'"
         }
       ]
     }
