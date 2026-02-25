@@ -20,24 +20,31 @@ jobs:
         id: version
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
+      - name: Create source tarball
+        run: |
+          TARBALL="homebrew-claude-code-hooks-${{ steps.version.outputs.version }}.tar.gz"
+          git archive --format=tar.gz --prefix="homebrew-claude-code-hooks-${{ steps.version.outputs.version }}/" "${GITHUB_REF_NAME}" -o "${TARBALL}"
+          echo "TARBALL=${TARBALL}" >> "$GITHUB_ENV"
+          echo "SHA256=$(sha256sum "${TARBALL}" | cut -d' ' -f1)" >> "$GITHUB_ENV"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
+          files: ${{ env.TARBALL }}
 
       - name: Update Formula
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          TARBALL_URL="https://github.com/${{ github.repository }}/archive/refs/tags/${GITHUB_REF_NAME}.tar.gz"
-
-          curl -sL "$TARBALL_URL" -o source.tar.gz
-          SHA256=$(sha256sum source.tar.gz | cut -d' ' -f1)
+          RELEASE_URL="https://github.com/${{ github.repository }}/releases/download/${GITHUB_REF_NAME}/${TARBALL}"
 
           cat > Formula/claude-code-hooks.rb << FORMULA_EOF
           class ClaudeCodeHooks < Formula
             desc "Claude Code hooks for Obsidian integration and notifications"
             homepage "https://github.com/${{ github.repository }}"
-            url "${TARBALL_URL}"
+            url "${RELEASE_URL}", using: GitHubPrivateRepositoryReleaseDownloadStrategy
             sha256 "${SHA256}"
             head "https://github.com/${{ github.repository }}.git", branch: "main"
 
