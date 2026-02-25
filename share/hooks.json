@@ -41,43 +41,6 @@
   ],
   "PostToolUse": [
     {
-      "matcher": "Bash",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "claude-code-hooks save"
-        }
-      ]
-    },
-    {
-      "matcher": "EnterPlanMode",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "claude-code-hooks save"
-        }
-      ]
-    },
-    {
-      "matcher": "ExitPlanMode",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "claude-code-hooks save"
-        }
-      ]
-    },
-    {
-      "matcher": "Edit",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "claude-code-hooks save"
-        }
-      ]
-    },
-    {
-      "matcher": "Write",
       "hooks": [
         {
           "type": "command",

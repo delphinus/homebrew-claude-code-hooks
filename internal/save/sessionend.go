@@ -76,8 +76,9 @@ func handleSessionEnd(input *hookdata.HookInput) error {
 		}
 	}
 
-	// Clean up session cache file (plan cache is already cleaned by flushCachedPlan)
+	// Clean up session cache files (plan cache is already cleaned by flushCachedPlan)
 	os.Remove(sessionCachePath)
+	os.Remove(filepath.Join(cacheDir, input.SessionID+"-last-msg"))
 
 	return nil
 }
