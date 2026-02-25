@@ -1,0 +1,80 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+
+      - name: Update Formula
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TARBALL_URL="https://github.com/${{ github.repository }}/archive/refs/tags/${GITHUB_REF_NAME}.tar.gz"
+
+          # Download tarball and compute sha256
+          curl -sL "$TARBALL_URL" -o source.tar.gz
+          SHA256=$(sha256sum source.tar.gz | cut -d' ' -f1)
+
+          # Update formula
+          cat > Formula/claude-code-hooks.rb << FORMULA_EOF
+          class ClaudeCodeHooks < Formula
+            desc "Claude Code hooks for Obsidian integration and notifications"
+            homepage "https://github.com/${{ github.repository }}"
+            url "${TARBALL_URL}"
+            sha256 "${SHA256}"
+            head "https://github.com/${{ github.repository }}.git", branch: "main"
+
+            depends_on "jq"
+
+            def install
+              bin.install "bin/claude-obsidian-save"
+              bin.install "bin/claude-obsidian-backfill-links"
+              bin.install "bin/claude-setup-hooks"
+              bin.install "bin/claude-notify"
+              (share/"claude-code-hooks").install "share/hooks.json"
+            end
+
+            def caveats
+              <<~EOS
+                hooks.json をインストールしました。以下のコマンドで Claude Code に適用してください:
+
+                  claude-setup-hooks
+
+                差分を事前に確認するには:
+
+                  claude-setup-hooks --diff
+              EOS
+            end
+          end
+          FORMULA_EOF
+
+          # Remove leading whitespace from heredoc
+          sed -i 's/^          //' Formula/claude-code-hooks.rb
+
+      - name: Commit and push Formula update
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout main
+          git add Formula/claude-code-hooks.rb
+          git diff --cached --quiet && exit 0
+          git commit -m "formula: update to v${VERSION}"
+          git push origin main

@@ -41,6 +41,8 @@ fi
 mkdir -p "$CACHE_DIR"
 
 SESSION_CACHE="$CACHE_DIR/$SESSION_ID"
+PLAN_CACHE="$CACHE_DIR/${SESSION_ID}-plan"
+PLAN_FLAG="$CACHE_DIR/${SESSION_ID}-in-plan"
 SID_SHORT=${SESSION_ID:0:4}
 
 # プロンプトから人間が読めるタイトルを生成する（alias 用）
@@ -255,11 +257,20 @@ case "$HOOK_EVENT" in
           add_previous_links "$NOTE"
         fi
 
+        # プランモードに入ったことを記録（Write でプラン内容をキャッシュするため）
+        touch "$PLAN_FLAG"
+
         printf '> [!plan] Entering Plan Mode (%s)\n\n' "$TS" >> "$NOTE"
         ;;
 
       ExitPlanMode)
-        PLAN=$(jq -r '.tool_input.plan // empty' <<< "$INPUT")
+        PLAN=""
+        # プランキャッシュから読み取る（プランモード中の Write で保存済み）
+        if [[ -f "$PLAN_CACHE" ]]; then
+          PLAN=$(<"$PLAN_CACHE")
+          rm -f "$PLAN_CACHE"
+        fi
+        rm -f "$PLAN_FLAG"
         [[ -z "$PLAN" ]] && exit 0
 
         NOTE=$(get_or_create_note "")
@@ -282,6 +293,11 @@ case "$HOOK_EVENT" in
       Edit|Write)
         FILE_PATH=$(jq -r '.tool_input.file_path // empty' <<< "$INPUT")
         [[ -z "$FILE_PATH" ]] && exit 0
+
+        # プランモード中の Write はプラン内容をキャッシュする
+        if [[ "$TOOL_NAME" == "Write" && -f "$PLAN_FLAG" ]]; then
+          jq -r '.tool_input.content // empty' <<< "$INPUT" > "$PLAN_CACHE"
+        fi
 
         NOTE=$(get_or_create_note "")
         [[ -f "$NOTE" ]] || exit 0
@@ -401,6 +417,8 @@ case "$HOOK_EVENT" in
     done
 
     rm -f "$SESSION_CACHE"
+    rm -f "$PLAN_CACHE"
+    rm -f "$PLAN_FLAG"
     ;;
 esac
 
