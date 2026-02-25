@@ -1,8 +1,8 @@
 class ClaudeCodeHooks < Formula
   desc "Claude Code hooks for Obsidian integration and notifications"
   homepage "https://github.com/delphinus/homebrew-claude-code-hooks"
-  url "git@github.com:delphinus/homebrew-claude-code-hooks.git", tag: "v2.1.0", revision: "d777a518f90b0104bdf40ba38cf0373c8bb0d5f5", using: :git
-  head "git@github.com:delphinus/homebrew-claude-code-hooks.git", branch: "main", using: :git
+  url "https://github.com/delphinus/homebrew-claude-code-hooks.git", tag: "v2.2.0", revision: "b44097829461780fcc06be75047fa9e67fcad20d"
+  head "https://github.com/delphinus/homebrew-claude-code-hooks.git", branch: "main"
 
   depends_on "go" => :build
 
