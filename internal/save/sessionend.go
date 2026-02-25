@@ -35,6 +35,9 @@ func handleSessionEnd(input *hookdata.HookInput) error {
 			continue
 		}
 
+		// Flush any cached plan that wasn't written (e.g. ExitPlanMode didn't fire)
+		flushCachedPlan(input.SessionID, notePath)
+
 		// Read note content (up to 100KB)
 		noteContent, err := readHead(notePath, 100000)
 		if err != nil {
@@ -73,10 +76,8 @@ func handleSessionEnd(input *hookdata.HookInput) error {
 		}
 	}
 
-	// Clean up cache files
+	// Clean up session cache file (plan cache is already cleaned by flushCachedPlan)
 	os.Remove(sessionCachePath)
-	os.Remove(filepath.Join(cacheDir, input.SessionID+"-plan"))
-	os.Remove(filepath.Join(cacheDir, input.SessionID+"-in-plan"))
 
 	return nil
 }
@@ -115,6 +116,11 @@ func insertSummary(notePath, summary string) {
 	}
 
 	text := string(content)
+
+	// Skip if summary already exists
+	if strings.Contains(text, "> [!summary]") {
+		return
+	}
 
 	// Find the end of frontmatter (second ---)
 	idx := strings.Index(text, "---\n")
