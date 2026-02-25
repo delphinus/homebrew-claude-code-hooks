@@ -14,18 +14,23 @@ import (
 )
 
 func handlePostToolUse(input *hookdata.HookInput) error {
+	var err error
 	switch input.ToolName {
 	case "Bash":
-		return handleBash(input)
+		err = handleBash(input)
 	case "EnterPlanMode":
-		return handleEnterPlanMode(input)
+		err = handleEnterPlanMode(input)
 	case "ExitPlanMode":
-		return handleExitPlanMode(input)
+		err = handleExitPlanMode(input)
 	case "Edit", "Write":
-		return handleEditWrite(input)
-	default:
-		return nil
+		err = handleEditWrite(input)
 	}
+	if err != nil {
+		return err
+	}
+
+	// Also record LastAssistantMessage if available (fallback for Stop event not firing)
+	return recordLastAssistantMessage(input)
 }
 
 func handleBash(input *hookdata.HookInput) error {
@@ -179,4 +184,39 @@ func appendToFile(path, content string) error {
 	defer f.Close()
 	_, err = f.WriteString(content)
 	return err
+}
+
+// recordLastAssistantMessage records the last assistant message if it hasn't been recorded yet.
+// This serves as a fallback for when the Stop event doesn't fire.
+func recordLastAssistantMessage(input *hookdata.HookInput) error {
+	msg := input.LastAssistantMessage
+	if msg == "" {
+		return nil
+	}
+
+	// Check if we've already recorded this message
+	cacheDir := config.CacheDir()
+	lastMsgCachePath := filepath.Join(cacheDir, input.SessionID+"-last-msg")
+
+	if cached, err := os.ReadFile(lastMsgCachePath); err == nil {
+		if string(cached) == msg {
+			// Already recorded this message
+			return nil
+		}
+	}
+
+	notePath, err := note.GetOrCreateNote(input.SessionID, input.CWD, msg)
+	if err != nil {
+		return err
+	}
+
+	ts := time.Now().Format("15:04:05")
+	content := fmt.Sprintf("## Assistant (%s)\n\n%s\n\n", ts, msg)
+
+	if err := appendToFile(notePath, content); err != nil {
+		return err
+	}
+
+	// Cache the recorded message to avoid duplicates
+	return os.WriteFile(lastMsgCachePath, []byte(msg), 0o644)
 }
