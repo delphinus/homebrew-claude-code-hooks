@@ -29,7 +29,12 @@
         {
           "type": "command",
           "command": "claude-obsidian-save",
-          "timeout": 120
+          "timeout": 120,
+          "statusMessage": "Obsidian にセッションを保存中..."
+        },
+        {
+          "type": "command",
+          "command": "claude-notify 'Claude Code' 'セッションの保存が完了しました'"
         }
       ]
     }
