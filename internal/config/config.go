@@ -35,7 +35,11 @@ func VaultDir() string {
 }
 
 // CacheDir returns the cache directory for session state.
+// Reads CLAUDE_OBSIDIAN_CACHE env var, falling back to the default path.
 func CacheDir() string {
+	if v := os.Getenv("CLAUDE_OBSIDIAN_CACHE"); v != "" {
+		return expandHome(v)
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return ""
