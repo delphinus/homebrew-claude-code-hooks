@@ -54,5 +54,8 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
+# Build binary
+claude-code-hooks
+
 # Claude Code
 .claude/
