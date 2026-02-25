@@ -36,14 +36,15 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           REVISION=$(git rev-parse "${GITHUB_REF_NAME}^{}")
-          REPO="https://github.com/${{ github.repository }}"
+          REPO_HTTPS="https://github.com/${{ github.repository }}"
+          REPO_SSH="ssh://git@github.com/${{ github.repository }}"
 
           cat > Formula/claude-code-hooks.rb << FORMULA_EOF
           class ClaudeCodeHooks < Formula
             desc "Claude Code hooks for Obsidian integration and notifications"
-            homepage "${REPO}"
-            url "${REPO}.git", tag: "v${VERSION}", revision: "${REVISION}"
-            head "${REPO}.git", branch: "main"
+            homepage "${REPO_HTTPS}"
+            url "${REPO_SSH}.git", tag: "v${VERSION}", revision: "${REVISION}", using: :git
+            head "${REPO_SSH}.git", branch: "main"
 
             depends_on "go" => :build
 
