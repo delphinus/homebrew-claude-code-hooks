@@ -1,0 +1,24 @@
+version: 2
+
+builds:
+  - main: ./cmd/claude-code-hooks
+    binary: claude-code-hooks
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+
+archives:
+  - name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    format: tar.gz
+    files:
+      - share/hooks.json
+
+checksum:
+  name_template: checksums.txt
+
+release:
+  generate_release_notes: true

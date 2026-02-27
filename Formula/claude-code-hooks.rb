@@ -1,13 +1,19 @@
 class ClaudeCodeHooks < Formula
   desc "Claude Code hooks for Obsidian integration and notifications"
   homepage "https://github.com/delphinus/homebrew-claude-code-hooks"
-  url "ssh://git@github.com/delphinus/homebrew-claude-code-hooks.git", tag: "v2.4.0", revision: "30c58d4eff08b64a95d5fe65b8f6171ce4eb3b84", using: :git
-  head "ssh://git@github.com/delphinus/homebrew-claude-code-hooks.git", branch: "main"
+  version "2.4.0"
 
-  depends_on "go" => :build
+  on_arm do
+    url "https://github.com/delphinus/homebrew-claude-code-hooks/releases/download/v2.4.0/claude-code-hooks_darwin_arm64.tar.gz"
+    sha256 "PLACEHOLDER"
+  end
+  on_intel do
+    url "https://github.com/delphinus/homebrew-claude-code-hooks/releases/download/v2.4.0/claude-code-hooks_darwin_amd64.tar.gz"
+    sha256 "PLACEHOLDER"
+  end
 
   def install
-    system "go", "build", *std_go_args(ldflags: "-s -w"), "./cmd/claude-code-hooks"
+    bin.install "claude-code-hooks"
     (share/"claude-code-hooks").install "share/hooks.json"
   end
 
