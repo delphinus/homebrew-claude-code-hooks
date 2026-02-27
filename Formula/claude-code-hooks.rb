@@ -8,12 +8,12 @@ class ClaudeCodeHooks < Formula
   on_arm do
     url "https://github.com/delphinus/homebrew-claude-code-hooks/releases/download/v2.5.0/claude-code-hooks_darwin_arm64.tar.gz",
         using: GitHubPrivateRepositoryReleaseDownloadStrategy
-    sha256 "aa7720f33a4f1c7217bf45a7b53f2e5bf8e6ab478456e94eda12343ffcf83182"
+    sha256 "f03c436bdc0176c54ce8b7e5af8dd0628ac3a9fcb5c5528a6f258e7a84047586"
   end
   on_intel do
     url "https://github.com/delphinus/homebrew-claude-code-hooks/releases/download/v2.5.0/claude-code-hooks_darwin_amd64.tar.gz",
         using: GitHubPrivateRepositoryReleaseDownloadStrategy
-    sha256 "132f73fac8d92efae1d1a6cebc274d8ae65ede45f03c8964c2ef9b671c60a967"
+    sha256 "411766210496a56bc58652b0ee9bf4d8409289637a3bdb030cbcc1eba4918e30"
   end
 
   def install
