@@ -5,11 +5,11 @@ class ClaudeCodeHooks < Formula
 
   on_arm do
     url "https://github.com/delphinus/homebrew-claude-code-hooks/releases/download/v2.5.0/claude-code-hooks_darwin_arm64.tar.gz"
-    sha256 "b2c7507bb7c03ffa2a5858f7e294e63d5ecdd5d98024a802e36cb355bc054802"
+    sha256 "aa7720f33a4f1c7217bf45a7b53f2e5bf8e6ab478456e94eda12343ffcf83182"
   end
   on_intel do
     url "https://github.com/delphinus/homebrew-claude-code-hooks/releases/download/v2.5.0/claude-code-hooks_darwin_amd64.tar.gz"
-    sha256 "77c97ecee0bd42fd5d5fdc1f112064ed03c9966ba8f70e1b77451d6eb40cf270"
+    sha256 "132f73fac8d92efae1d1a6cebc274d8ae65ede45f03c8964c2ef9b671c60a967"
   end
 
   def install
