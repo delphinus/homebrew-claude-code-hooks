@@ -70,7 +70,7 @@ func GetOrCreateNote(sessionID, cwd, prompt string) (string, error) {
 
 	project := "unknown"
 	if cwd != "" {
-		project = filepath.Base(cwd)
+		project = filepath.Base(repoRoot(cwd))
 	}
 
 	now := time.Now()
@@ -203,6 +203,26 @@ func FindNotesBySessionID(sessionID, vaultDir string) ([]string, error) {
 		return nil
 	})
 	return results, err
+}
+
+// repoRoot walks up from dir looking for a .git directory or file.
+// Returns the repository root if found, otherwise returns dir unchanged.
+func repoRoot(dir string) string {
+	cur := dir
+	for {
+		if fi, err := os.Stat(filepath.Join(cur, ".git")); err == nil {
+			// .git can be a directory (normal repo) or a file (worktree)
+			if fi.IsDir() || fi.Mode().IsRegular() {
+				return cur
+			}
+		}
+		parent := filepath.Dir(cur)
+		if parent == cur {
+			// Reached filesystem root without finding .git
+			return dir
+		}
+		cur = parent
+	}
 }
 
 func hostname() string {
