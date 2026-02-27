@@ -20,5 +20,5 @@ archives:
 checksum:
   name_template: checksums.txt
 
-release:
-  generate_release_notes: true
+changelog:
+  use: github-native
