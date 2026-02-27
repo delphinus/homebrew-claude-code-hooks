@@ -41,21 +41,17 @@ jobs:
           AMD64_SHA=$(grep "claude-code-hooks_darwin_amd64.tar.gz" dist/checksums.txt | awk '{print $1}')
 
           cat > Formula/claude-code-hooks.rb << FORMULA_EOF
-          require_relative "../lib/private_strategy"
-
           class ClaudeCodeHooks < Formula
             desc "Claude Code hooks for Obsidian integration and notifications"
             homepage "${REPO}"
             version "${VERSION}"
 
             on_arm do
-              url "${REPO}/releases/download/v${VERSION}/claude-code-hooks_darwin_arm64.tar.gz",
-                  using: GitHubPrivateRepositoryReleaseDownloadStrategy
+              url "${REPO}/releases/download/v${VERSION}/claude-code-hooks_darwin_arm64.tar.gz"
               sha256 "${ARM64_SHA}"
             end
             on_intel do
-              url "${REPO}/releases/download/v${VERSION}/claude-code-hooks_darwin_amd64.tar.gz",
-                  using: GitHubPrivateRepositoryReleaseDownloadStrategy
+              url "${REPO}/releases/download/v${VERSION}/claude-code-hooks_darwin_amd64.tar.gz"
               sha256 "${AMD64_SHA}"
             end
 
