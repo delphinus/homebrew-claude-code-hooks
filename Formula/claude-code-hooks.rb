@@ -1,14 +1,18 @@
+require_relative "../lib/private_strategy"
+
 class ClaudeCodeHooks < Formula
   desc "Claude Code hooks for Obsidian integration and notifications"
   homepage "https://github.com/delphinus/homebrew-claude-code-hooks"
   version "2.5.0"
 
   on_arm do
-    url "https://github.com/delphinus/homebrew-claude-code-hooks/releases/download/v2.5.0/claude-code-hooks_darwin_arm64.tar.gz"
+    url "https://github.com/delphinus/homebrew-claude-code-hooks/releases/download/v2.5.0/claude-code-hooks_darwin_arm64.tar.gz",
+        using: GitHubPrivateRepositoryReleaseDownloadStrategy
     sha256 "aa7720f33a4f1c7217bf45a7b53f2e5bf8e6ab478456e94eda12343ffcf83182"
   end
   on_intel do
-    url "https://github.com/delphinus/homebrew-claude-code-hooks/releases/download/v2.5.0/claude-code-hooks_darwin_amd64.tar.gz"
+    url "https://github.com/delphinus/homebrew-claude-code-hooks/releases/download/v2.5.0/claude-code-hooks_darwin_amd64.tar.gz",
+        using: GitHubPrivateRepositoryReleaseDownloadStrategy
     sha256 "132f73fac8d92efae1d1a6cebc274d8ae65ede45f03c8964c2ef9b671c60a967"
   end
 
