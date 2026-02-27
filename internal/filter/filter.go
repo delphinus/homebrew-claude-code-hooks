@@ -20,7 +20,51 @@ var skipCommands = map[string]bool{
 	"alias": true, "id": true, "jq": true,
 }
 
+// git: read-only subcommands to skip
+var gitSkipSubcommands = map[string]bool{
+	"status": true, "diff": true, "log": true, "show": true,
+	"rev-parse": true, "describe": true, "shortlog": true,
+	"ls-files": true, "ls-tree": true, "cat-file": true,
+	"reflog": true, "blame": true,
+}
+
+// go: build/test/inspection subcommands to skip
+var goSkipSubcommands = map[string]bool{
+	"test": true, "build": true, "vet": true,
+	"version": true, "env": true, "list": true, "doc": true,
+}
+
+// gh: read-only verbs (3rd token) to skip
+var ghSkipVerbs = map[string]bool{
+	"list": true, "view": true, "watch": true,
+	"status": true, "checks": true, "diff": true,
+}
+
 var splitPattern = regexp.MustCompile(`[|;&]+`)
+
+// isSkippedSegment returns true if a single command segment should be skipped.
+func isSkippedSegment(seg string) bool {
+	tokens := strings.Fields(seg)
+	if len(tokens) == 0 {
+		return true
+	}
+	firstToken := tokens[0]
+
+	if skipCommands[firstToken] {
+		return true
+	}
+
+	switch firstToken {
+	case "git":
+		return len(tokens) >= 2 && gitSkipSubcommands[tokens[1]]
+	case "go":
+		return len(tokens) >= 2 && goSkipSubcommands[tokens[1]]
+	case "gh":
+		return len(tokens) >= 3 && ghSkipVerbs[tokens[2]]
+	}
+
+	return false
+}
 
 // ShouldRecordCommand returns true if the command contains at least one
 // non-blocklisted command. Pipe, semicolon, &&, and || segments are checked
@@ -32,12 +76,7 @@ func ShouldRecordCommand(cmd string) bool {
 		if seg == "" {
 			continue
 		}
-		// Extract the first token (the command name)
-		firstToken := seg
-		if idx := strings.IndexAny(seg, " \t"); idx >= 0 {
-			firstToken = seg[:idx]
-		}
-		if !skipCommands[firstToken] {
+		if !isSkippedSegment(seg) {
 			return true
 		}
 	}
