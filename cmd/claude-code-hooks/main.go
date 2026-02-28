@@ -11,6 +11,8 @@ import (
 	"github.com/delphinus/homebrew-claude-code-hooks/internal/setup"
 )
 
+var version = "dev"
+
 const usage = `Usage: claude-code-hooks <command> [args]
 
 Commands:
@@ -18,12 +20,21 @@ Commands:
   backfill [--dry-run]  Backfill related links between session notes
   notify TITLE MSG  Show macOS notification (suppressed if WezTerm pane is focused)
   setup [--diff]    Merge hooks.json into ~/.claude/settings.json
+
+Flags:
+  --version, -v     Show version
 `
 
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Fprint(os.Stderr, usage)
 		os.Exit(1)
+	}
+
+	switch os.Args[1] {
+	case "--version", "-v":
+		fmt.Println(version)
+		return
 	}
 
 	var err error
