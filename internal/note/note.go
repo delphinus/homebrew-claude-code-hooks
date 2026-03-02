@@ -3,7 +3,9 @@ package note
 import (
 	"bufio"
 	"fmt"
+	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -153,6 +155,8 @@ func GetOrCreateNote(sessionID, cwd, prompt string) (string, error) {
 		return "", fmt.Errorf("writing note: %w", err)
 	}
 
+	openInObsidian(notePath)
+
 	// Add "Continued in" link to old note
 	if oldNote != "" {
 		if _, err := os.Stat(oldNote); err == nil {
@@ -231,4 +235,10 @@ func hostname() string {
 		return "unknown"
 	}
 	return h
+}
+
+// openInObsidian opens the given note in Obsidian using the obsidian:// URI scheme.
+func openInObsidian(notePath string) {
+	u := "obsidian://open?path=" + url.QueryEscape(notePath)
+	exec.Command("open", u).Start()
 }
