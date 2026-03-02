@@ -6,6 +6,38 @@ import (
 	"testing"
 )
 
+func TestObsidianURL(t *testing.T) {
+	tests := []struct {
+		name     string
+		path     string
+		want     string
+	}{
+		{
+			name: "simple path",
+			path: "/Users/test/vault/note.md",
+			want: "obsidian://open?path=%2FUsers%2Ftest%2Fvault%2Fnote.md",
+		},
+		{
+			name: "path with spaces uses %20 not +",
+			path: "/Users/test/Library/Mobile Documents/iCloud~md~obsidian/Documents/Notes/Claude Code/note.md",
+			want: "obsidian://open?path=%2FUsers%2Ftest%2FLibrary%2FMobile%20Documents%2FiCloud~md~obsidian%2FDocuments%2FNotes%2FClaude%20Code%2Fnote.md",
+		},
+		{
+			name: "path with Japanese characters",
+			path: "/Users/test/vault/テストノート.md",
+			want: "obsidian://open?path=%2FUsers%2Ftest%2Fvault%2F%E3%83%86%E3%82%B9%E3%83%88%E3%83%8E%E3%83%BC%E3%83%88.md",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := obsidianURL(tt.path)
+			if got != tt.want {
+				t.Errorf("obsidianURL(%q) =\n  %s\nwant:\n  %s", tt.path, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestRepoRoot(t *testing.T) {
 	t.Run("finds git repo root from subdirectory", func(t *testing.T) {
 		// Create a temp directory simulating a repo with subdirectories

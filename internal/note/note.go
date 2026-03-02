@@ -237,8 +237,12 @@ func hostname() string {
 	return h
 }
 
+// obsidianURL builds an obsidian:// URI for the given note path.
+func obsidianURL(notePath string) string {
+	return "obsidian://open?path=" + url.PathEscape(notePath)
+}
+
 // openInObsidian opens the given note in Obsidian using the obsidian:// URI scheme.
 func openInObsidian(notePath string) {
-	u := "obsidian://open?path=" + url.QueryEscape(notePath)
-	exec.Command("open", u).Start()
+	exec.Command("open", obsidianURL(notePath)).Start()
 }
