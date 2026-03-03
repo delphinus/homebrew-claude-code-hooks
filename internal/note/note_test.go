@@ -6,11 +6,11 @@ import (
 	"testing"
 )
 
-func TestObsidianURL(t *testing.T) {
+func TestObsidianOpenURL(t *testing.T) {
 	tests := []struct {
-		name     string
-		path     string
-		want     string
+		name string
+		path string
+		want string
 	}{
 		{
 			name: "simple path",
@@ -30,12 +30,104 @@ func TestObsidianURL(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := obsidianURL(tt.path)
+			got := obsidianOpenURL(tt.path)
 			if got != tt.want {
-				t.Errorf("obsidianURL(%q) =\n  %s\nwant:\n  %s", tt.path, got, tt.want)
+				t.Errorf("obsidianOpenURL(%q) =\n  %s\nwant:\n  %s", tt.path, got, tt.want)
 			}
 		})
 	}
+}
+
+func TestAdvancedURI(t *testing.T) {
+	tests := []struct {
+		name      string
+		vaultName string
+		relPath   string
+		want      string
+	}{
+		{
+			name:      "simple path",
+			vaultName: "Notes",
+			relPath:   "project/note.md",
+			want:      "obsidian://advanced-uri?vault=Notes&filepath=project%2Fnote.md&openmode=tab",
+		},
+		{
+			name:      "vault name with spaces",
+			vaultName: "My Notes",
+			relPath:   "Claude Code/note.md",
+			want:      "obsidian://advanced-uri?vault=My%20Notes&filepath=Claude%20Code%2Fnote.md&openmode=tab",
+		},
+		{
+			name:      "path with Japanese characters",
+			vaultName: "Notes",
+			relPath:   "project/テストノート.md",
+			want:      "obsidian://advanced-uri?vault=Notes&filepath=project%2F%E3%83%86%E3%82%B9%E3%83%88%E3%83%8E%E3%83%BC%E3%83%88.md&openmode=tab",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := advancedURI(tt.vaultName, tt.relPath)
+			if got != tt.want {
+				t.Errorf("advancedURI(%q, %q) =\n  %s\nwant:\n  %s", tt.vaultName, tt.relPath, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestVaultRoot(t *testing.T) {
+	t.Run("finds vault root from subdirectory", func(t *testing.T) {
+		root := t.TempDir()
+		if err := os.Mkdir(filepath.Join(root, ".obsidian"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		sub := filepath.Join(root, "Claude Code", "project")
+		if err := os.MkdirAll(sub, 0o755); err != nil {
+			t.Fatal(err)
+		}
+
+		got := vaultRoot(sub)
+		if got != root {
+			t.Errorf("vaultRoot(%q) = %q, want %q", sub, got, root)
+		}
+	})
+
+	t.Run("returns empty when no vault found", func(t *testing.T) {
+		dir := t.TempDir()
+		sub := filepath.Join(dir, "a", "b")
+		if err := os.MkdirAll(sub, 0o755); err != nil {
+			t.Fatal(err)
+		}
+
+		got := vaultRoot(sub)
+		if got != "" {
+			t.Errorf("vaultRoot(%q) = %q, want empty string", sub, got)
+		}
+	})
+}
+
+func TestHasAdvancedURI(t *testing.T) {
+	t.Run("returns true when plugin is installed", func(t *testing.T) {
+		root := t.TempDir()
+		pluginDir := filepath.Join(root, ".obsidian", "plugins", "obsidian-advanced-uri")
+		if err := os.MkdirAll(pluginDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+
+		if !hasAdvancedURI(root) {
+			t.Error("hasAdvancedURI() = false, want true")
+		}
+	})
+
+	t.Run("returns false when plugin is not installed", func(t *testing.T) {
+		root := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(root, ".obsidian", "plugins"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+
+		if hasAdvancedURI(root) {
+			t.Error("hasAdvancedURI() = true, want false")
+		}
+	})
 }
 
 func TestRepoRoot(t *testing.T) {

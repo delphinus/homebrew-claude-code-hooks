@@ -23,6 +23,11 @@ Commands:
 
 Flags:
   --version, -v     Show version
+
+Optional:
+  Obsidian の Advanced URI プラグインを導入すると、ノートを新しいタブで開きます。
+  未導入の場合は既存のタブで開きます。
+  https://github.com/Vinzent03/obsidian-advanced-uri
 `
 
 func main() {

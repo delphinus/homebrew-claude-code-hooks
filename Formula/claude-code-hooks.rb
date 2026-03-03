@@ -26,6 +26,10 @@ class ClaudeCodeHooks < Formula
       差分を事前に確認するには:
 
         claude-code-hooks setup --diff
+
+      [推奨] Obsidian の Advanced URI プラグインを導入すると、
+      ノートが新しいタブで開くようになります:
+        https://github.com/Vinzent03/obsidian-advanced-uri
     EOS
   end
 end

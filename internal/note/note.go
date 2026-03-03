@@ -237,12 +237,51 @@ func hostname() string {
 	return h
 }
 
-// obsidianURL builds an obsidian:// URI for the given note path.
-func obsidianURL(notePath string) string {
+// vaultRoot walks up from dir looking for an .obsidian directory.
+// Returns the vault root if found, otherwise returns "".
+func vaultRoot(dir string) string {
+	cur := dir
+	for {
+		if fi, err := os.Stat(filepath.Join(cur, ".obsidian")); err == nil && fi.IsDir() {
+			return cur
+		}
+		parent := filepath.Dir(cur)
+		if parent == cur {
+			return ""
+		}
+		cur = parent
+	}
+}
+
+// hasAdvancedURI checks whether the Advanced URI plugin is installed in the vault.
+func hasAdvancedURI(root string) bool {
+	fi, err := os.Stat(filepath.Join(root, ".obsidian", "plugins", "obsidian-advanced-uri"))
+	return err == nil && fi.IsDir()
+}
+
+// obsidianOpenURL builds a basic obsidian://open URI.
+func obsidianOpenURL(notePath string) string {
 	return "obsidian://open?path=" + url.PathEscape(notePath)
 }
 
-// openInObsidian opens the given note in Obsidian using the obsidian:// URI scheme.
+// advancedURI builds an obsidian://advanced-uri URI with openmode=tab.
+func advancedURI(vaultName, relPath string) string {
+	return "obsidian://advanced-uri?vault=" + url.PathEscape(vaultName) +
+		"&filepath=" + url.PathEscape(relPath) +
+		"&openmode=tab"
+}
+
+// openInObsidian opens the given note in Obsidian.
+// Uses Advanced URI plugin (new tab) if available, otherwise falls back to obsidian://open.
 func openInObsidian(notePath string) {
-	exec.Command("open", obsidianURL(notePath)).Start()
+	uri := obsidianOpenURL(notePath)
+	if root := vaultRoot(filepath.Dir(notePath)); root != "" {
+		if hasAdvancedURI(root) {
+			vaultName := filepath.Base(root)
+			if relPath, err := filepath.Rel(root, notePath); err == nil {
+				uri = advancedURI(vaultName, relPath)
+			}
+		}
+	}
+	exec.Command("open", "-g", uri).Start()
 }
