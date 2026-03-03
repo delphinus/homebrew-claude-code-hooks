@@ -1,15 +1,15 @@
 class ClaudeCodeHooks < Formula
   desc "Claude Code hooks for Obsidian integration and notifications"
   homepage "https://github.com/delphinus/homebrew-claude-code-hooks"
-  version "2.9.0"
+  version "2.10.0"
 
   on_arm do
-    url "https://github.com/delphinus/homebrew-claude-code-hooks/releases/download/v2.9.0/claude-code-hooks_darwin_arm64.tar.gz"
-    sha256 "7b8471f2a7b42c224d4852a809435d3e62f7706fe85efb7a8e70e6439b9e6b62"
+    url "https://github.com/delphinus/homebrew-claude-code-hooks/releases/download/v2.10.0/claude-code-hooks_darwin_arm64.tar.gz"
+    sha256 "0851c690999d7fd22d24f8d9accbf466fa03aa58cc2ca37b1fe6e6b7efcec963"
   end
   on_intel do
-    url "https://github.com/delphinus/homebrew-claude-code-hooks/releases/download/v2.9.0/claude-code-hooks_darwin_amd64.tar.gz"
-    sha256 "9ad0d4c21849ab3c6a24749c4130947d33a0a7541b0bac2b2d9f855981e1e119"
+    url "https://github.com/delphinus/homebrew-claude-code-hooks/releases/download/v2.10.0/claude-code-hooks_darwin_amd64.tar.gz"
+    sha256 "0b3975aef5d84b573e729aafdd320d4abfea26913a887fdcfab5ffeb5d42c00d"
   end
 
   def install
@@ -26,10 +26,6 @@ class ClaudeCodeHooks < Formula
       差分を事前に確認するには:
 
         claude-code-hooks setup --diff
-
-      [推奨] Obsidian の Advanced URI プラグインを導入すると、
-      ノートが新しいタブで開くようになります:
-        https://github.com/Vinzent03/obsidian-advanced-uri
     EOS
   end
 end
