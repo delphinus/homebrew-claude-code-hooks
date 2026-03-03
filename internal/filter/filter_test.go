@@ -64,6 +64,10 @@ func TestShouldRecordCommand(t *testing.T) {
 		{"gh release delete v1.0.0 --yes", true},
 		{"gh run cancel 123", true},
 
+		// git branch → skip (read-only listing)
+		{"git branch -a", false},
+		{"git branch -a | head -20", false},
+
 		// pipe: all segments skipped → skip
 		{"git log --oneline | head -5", false},
 		{"git status && git diff", false},
@@ -72,6 +76,19 @@ func TestShouldRecordCommand(t *testing.T) {
 		{"git diff && git commit -m 'msg'", true},
 		{"rm -rf dist && go build", false},
 		{"ls | go build", false},
+
+		// quoted strings: | inside quotes must not split
+		{`grep -r "foo\|bar" file.txt`, false},
+		{`grep -r "foo\|bar\|baz" file.txt | head -5`, false},
+		{`git log --oneline --grep="scroll\|mouse" | head -10`, false},
+		{`grep -A 10 "foo\|bar\|<C-\|close" file | head -80`, false},
+		{`grep 'foo\|bar' file.txt`, false},
+		{`npm install "some-pkg" && grep "foo\|bar" file`, true},
+
+		// redirections: 2>&1 must not be treated as separator
+		{"go test ./... 2>&1 | head -100", false},
+		{"go test -v ./... 2>&1 | tail -30", false},
+		{"npm test 2>&1 | head -10", true},
 	}
 
 	for _, tt := range tests {

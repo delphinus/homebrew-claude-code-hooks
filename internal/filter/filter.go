@@ -23,7 +23,7 @@ var skipCommands = map[string]bool{
 // git: read-only subcommands to skip
 var gitSkipSubcommands = map[string]bool{
 	"status": true, "diff": true, "log": true, "show": true,
-	"rev-parse": true, "describe": true, "shortlog": true,
+	"branch": true, "rev-parse": true, "describe": true, "shortlog": true,
 	"ls-files": true, "ls-tree": true, "cat-file": true,
 	"reflog": true, "blame": true,
 }
@@ -40,7 +40,34 @@ var ghSkipVerbs = map[string]bool{
 	"status": true, "checks": true, "diff": true,
 }
 
-var splitPattern = regexp.MustCompile(`[|;&]+`)
+// splitPattern matches shell command separators: pipe (|), logical OR (||),
+// logical AND (&&), and semicolon (;). Single & is NOT matched to avoid
+// incorrectly splitting shell redirections like 2>&1.
+var splitPattern = regexp.MustCompile(`\|\||&&|[|;]`)
+
+// stripQuoted replaces content inside single/double quotes with empty strings
+// so that characters like | inside quoted arguments (e.g. grep "foo\|bar")
+// are not treated as command separators.
+func stripQuoted(s string) string {
+	var b strings.Builder
+	inSingle := false
+	inDouble := false
+	for _, ch := range s {
+		switch {
+		case ch == '\'' && !inDouble:
+			inSingle = !inSingle
+			b.WriteRune(ch)
+		case ch == '"' && !inSingle:
+			inDouble = !inDouble
+			b.WriteRune(ch)
+		case inSingle || inDouble:
+			continue
+		default:
+			b.WriteRune(ch)
+		}
+	}
+	return b.String()
+}
 
 // isSkippedSegment returns true if a single command segment should be skipped.
 func isSkippedSegment(seg string) bool {
@@ -68,9 +95,10 @@ func isSkippedSegment(seg string) bool {
 
 // ShouldRecordCommand returns true if the command contains at least one
 // non-blocklisted command. Pipe, semicolon, &&, and || segments are checked
-// individually.
+// individually. Quoted strings are stripped before splitting so that
+// characters like | inside arguments do not cause incorrect splits.
 func ShouldRecordCommand(cmd string) bool {
-	segments := splitPattern.Split(cmd, -1)
+	segments := splitPattern.Split(stripQuoted(cmd), -1)
 	for _, seg := range segments {
 		seg = strings.TrimSpace(seg)
 		if seg == "" {
