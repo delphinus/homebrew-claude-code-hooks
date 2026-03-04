@@ -1,15 +1,15 @@
 class ClaudeCodeHooks < Formula
   desc "Claude Code hooks for Obsidian integration and notifications"
   homepage "https://github.com/delphinus/homebrew-claude-code-hooks"
-  version "2.13.0"
+  version "2.14.0"
 
   on_arm do
-    url "https://github.com/delphinus/homebrew-claude-code-hooks/releases/download/v2.13.0/claude-code-hooks_darwin_arm64.tar.gz"
-    sha256 "70d56d10796e8f838a1c3f121b0c446a4dd2f598211b176302ce6a7e5b009ff2"
+    url "https://github.com/delphinus/homebrew-claude-code-hooks/releases/download/v2.14.0/claude-code-hooks_darwin_arm64.tar.gz"
+    sha256 "b4d2429479e9664c586984d4e6f6e2a48a70c6427558811e588fb7be2d206d0e"
   end
   on_intel do
-    url "https://github.com/delphinus/homebrew-claude-code-hooks/releases/download/v2.13.0/claude-code-hooks_darwin_amd64.tar.gz"
-    sha256 "06ed0fdb9396828132145aaf270d383fdf67e5aa1a3c266df6a0ccd6b68e6378"
+    url "https://github.com/delphinus/homebrew-claude-code-hooks/releases/download/v2.14.0/claude-code-hooks_darwin_amd64.tar.gz"
+    sha256 "98598fcf778b06474b9d92c95bfdcf18a4bc00237d5f5d18ce7fb87a2faed594"
   end
 
   def install
