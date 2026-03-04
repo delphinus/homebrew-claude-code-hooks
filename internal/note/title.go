@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	invalidChars    = regexp.MustCompile(`[/\\:*?"<>|]`)
+	invalidChars    = regexp.MustCompile(`[/\\:*?"<>|#\[\]{}'` + "`]")
 	multipleSpaces  = regexp.MustCompile(`\s+`)
 	multipleHyphens = regexp.MustCompile(`-+`)
 	nonASCIISlug    = regexp.MustCompile(`[^a-z0-9-]`)
