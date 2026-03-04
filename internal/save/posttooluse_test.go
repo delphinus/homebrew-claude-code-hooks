@@ -493,6 +493,200 @@ func TestPlanMode_StaleRepostIgnored(t *testing.T) {
 	}
 }
 
+func TestEditWrite_DeduplicateConsecutive(t *testing.T) {
+	vaultDir, _ := setupTestDirs(t)
+
+	sessionID := "test-dedup-2"
+	cwd := "/tmp/test-project"
+
+	// First Edit
+	input1 := &hookdata.HookInput{
+		SessionID:     sessionID,
+		HookEventName: "PostToolUse",
+		CWD:           cwd,
+		ToolName:      "Edit",
+		ToolInput:     hookdata.ToolInput{FilePath: cwd + "/README.md"},
+	}
+	if err := Run(input1); err != nil {
+		t.Fatalf("first Edit failed: %v", err)
+	}
+
+	// Second Edit — same file
+	input2 := &hookdata.HookInput{
+		SessionID:     sessionID,
+		HookEventName: "PostToolUse",
+		CWD:           cwd,
+		ToolName:      "Edit",
+		ToolInput:     hookdata.ToolInput{FilePath: cwd + "/README.md"},
+	}
+	if err := Run(input2); err != nil {
+		t.Fatalf("second Edit failed: %v", err)
+	}
+
+	content := readNoteContent(t, vaultDir)
+	if !strings.Contains(content, "× 2") {
+		t.Errorf("should contain × 2, got:\n%s", content)
+	}
+	// Should NOT have two separate file entries
+	if strings.Count(content, "[!file] Edit: README.md") != 1 {
+		t.Errorf("should have exactly one file entry, got:\n%s", content)
+	}
+}
+
+func TestEditWrite_DeduplicateTriple(t *testing.T) {
+	vaultDir, _ := setupTestDirs(t)
+
+	sessionID := "test-dedup-3"
+	cwd := "/tmp/test-project"
+
+	for i := 0; i < 3; i++ {
+		input := &hookdata.HookInput{
+			SessionID:     sessionID,
+			HookEventName: "PostToolUse",
+			CWD:           cwd,
+			ToolName:      "Edit",
+			ToolInput:     hookdata.ToolInput{FilePath: cwd + "/main.go"},
+		}
+		if err := Run(input); err != nil {
+			t.Fatalf("Edit %d failed: %v", i+1, err)
+		}
+	}
+
+	content := readNoteContent(t, vaultDir)
+	if !strings.Contains(content, "× 3") {
+		t.Errorf("should contain × 3, got:\n%s", content)
+	}
+	if strings.Count(content, "[!file] Edit: main.go") != 1 {
+		t.Errorf("should have exactly one file entry, got:\n%s", content)
+	}
+}
+
+func TestEditWrite_NoDedupDifferentFile(t *testing.T) {
+	vaultDir, _ := setupTestDirs(t)
+
+	sessionID := "test-dedup-diff-file"
+	cwd := "/tmp/test-project"
+
+	input1 := &hookdata.HookInput{
+		SessionID:     sessionID,
+		HookEventName: "PostToolUse",
+		CWD:           cwd,
+		ToolName:      "Edit",
+		ToolInput:     hookdata.ToolInput{FilePath: cwd + "/file1.go"},
+	}
+	if err := Run(input1); err != nil {
+		t.Fatalf("first Edit failed: %v", err)
+	}
+
+	input2 := &hookdata.HookInput{
+		SessionID:     sessionID,
+		HookEventName: "PostToolUse",
+		CWD:           cwd,
+		ToolName:      "Edit",
+		ToolInput:     hookdata.ToolInput{FilePath: cwd + "/file2.go"},
+	}
+	if err := Run(input2); err != nil {
+		t.Fatalf("second Edit failed: %v", err)
+	}
+
+	content := readNoteContent(t, vaultDir)
+	if strings.Contains(content, "×") {
+		t.Errorf("should not deduplicate different files, got:\n%s", content)
+	}
+	if strings.Count(content, "[!file]") != 2 {
+		t.Errorf("should have two file entries, got:\n%s", content)
+	}
+}
+
+func TestEditWrite_NoDedupDifferentTool(t *testing.T) {
+	vaultDir, _ := setupTestDirs(t)
+
+	sessionID := "test-dedup-diff-tool"
+	cwd := "/tmp/test-project"
+
+	input1 := &hookdata.HookInput{
+		SessionID:     sessionID,
+		HookEventName: "PostToolUse",
+		CWD:           cwd,
+		ToolName:      "Edit",
+		ToolInput:     hookdata.ToolInput{FilePath: cwd + "/README.md"},
+	}
+	if err := Run(input1); err != nil {
+		t.Fatalf("Edit failed: %v", err)
+	}
+
+	input2 := &hookdata.HookInput{
+		SessionID:     sessionID,
+		HookEventName: "PostToolUse",
+		CWD:           cwd,
+		ToolName:      "Write",
+		ToolInput:     hookdata.ToolInput{FilePath: cwd + "/README.md"},
+	}
+	if err := Run(input2); err != nil {
+		t.Fatalf("Write failed: %v", err)
+	}
+
+	content := readNoteContent(t, vaultDir)
+	if strings.Contains(content, "×") {
+		t.Errorf("should not deduplicate different tools, got:\n%s", content)
+	}
+	if strings.Count(content, "[!file]") != 2 {
+		t.Errorf("should have two file entries, got:\n%s", content)
+	}
+}
+
+func TestEditWrite_NoDedupAfterOtherEntry(t *testing.T) {
+	vaultDir, _ := setupTestDirs(t)
+
+	sessionID := "test-dedup-other"
+	cwd := "/tmp/test-project"
+
+	// First Edit
+	input1 := &hookdata.HookInput{
+		SessionID:     sessionID,
+		HookEventName: "PostToolUse",
+		CWD:           cwd,
+		ToolName:      "Edit",
+		ToolInput:     hookdata.ToolInput{FilePath: cwd + "/README.md"},
+	}
+	if err := Run(input1); err != nil {
+		t.Fatalf("Edit failed: %v", err)
+	}
+
+	// Bash command in between
+	bashInput := &hookdata.HookInput{
+		SessionID:     sessionID,
+		HookEventName: "PostToolUse",
+		CWD:           cwd,
+		ToolName:      "Bash",
+		ToolInput:     hookdata.ToolInput{Command: "make build", Description: "Build project"},
+	}
+	if err := Run(bashInput); err != nil {
+		t.Fatalf("Bash failed: %v", err)
+	}
+
+	// Second Edit — same file but after a Bash entry
+	input2 := &hookdata.HookInput{
+		SessionID:     sessionID,
+		HookEventName: "PostToolUse",
+		CWD:           cwd,
+		ToolName:      "Edit",
+		ToolInput:     hookdata.ToolInput{FilePath: cwd + "/README.md"},
+	}
+	if err := Run(input2); err != nil {
+		t.Fatalf("second Edit failed: %v", err)
+	}
+
+	content := readNoteContent(t, vaultDir)
+	if strings.Contains(content, "×") {
+		t.Errorf("should not deduplicate when other entries are in between, got:\n%s", content)
+	}
+	// Should have two Edit entries and one Bash entry
+	if strings.Count(content, "[!file] Edit: README.md") != 2 {
+		t.Errorf("should have two Edit entries, got:\n%s", content)
+	}
+}
+
 // readNoteContent finds and reads the first .md file in the vault directory.
 func readNoteContent(t *testing.T, vaultDir string) string {
 	t.Helper()

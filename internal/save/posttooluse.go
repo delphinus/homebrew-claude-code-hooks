@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -226,6 +228,66 @@ func formatPlanCallout(plan, ts string, collapsible bool) string {
 	return b.String()
 }
 
+// fileEntryPattern matches lines like:
+//
+//	> [!file] Edit: README.md (14:16:09)
+//	> [!file] Edit: README.md (14:16:09) × 3
+var fileEntryPattern = regexp.MustCompile(
+	`^> \[!file\] (\w+): (.+) \(\d{2}:\d{2}:\d{2}\)(?: × (\d+))?$`,
+)
+
+// deduplicateFileEntry checks the last non-empty line of the note file. If it
+// matches the same toolName and filePath, the line is replaced in-place with an
+// incremented count (× N) and the function returns true. Otherwise it returns
+// false so the caller can fall back to appending a new entry.
+func deduplicateFileEntry(notePath, toolName, filePath string) (bool, error) {
+	data, err := os.ReadFile(notePath)
+	if err != nil {
+		return false, err
+	}
+
+	content := string(data)
+	lines := strings.Split(content, "\n")
+
+	// Find the last non-empty line.
+	lastIdx := -1
+	for i := len(lines) - 1; i >= 0; i-- {
+		if strings.TrimSpace(lines[i]) != "" {
+			lastIdx = i
+			break
+		}
+	}
+	if lastIdx < 0 {
+		return false, nil
+	}
+
+	m := fileEntryPattern.FindStringSubmatch(lines[lastIdx])
+	if m == nil {
+		return false, nil
+	}
+
+	// m[1] = tool name, m[2] = file path, m[3] = optional count
+	if m[1] != toolName || m[2] != filePath {
+		return false, nil
+	}
+
+	count := 1
+	if m[3] != "" {
+		count, _ = strconv.Atoi(m[3])
+	}
+	count++
+
+	// Rebuild the line preserving the original timestamp.
+	// Extract everything up to and including the timestamp part.
+	tsEnd := strings.LastIndex(lines[lastIdx], ")")
+	if tsEnd < 0 {
+		return false, nil
+	}
+	lines[lastIdx] = lines[lastIdx][:tsEnd+1] + fmt.Sprintf(" × %d", count)
+
+	return true, os.WriteFile(notePath, []byte(strings.Join(lines, "\n")), 0o644)
+}
+
 func handleEditWrite(input *hookdata.HookInput) error {
 	filePath := input.ToolInput.FilePath
 	if filePath == "" {
@@ -265,6 +327,11 @@ func handleEditWrite(input *hookdata.HookInput) error {
 	displayPath := filePath
 	if input.CWD != "" && strings.HasPrefix(filePath, input.CWD+"/") {
 		displayPath = strings.TrimPrefix(filePath, input.CWD+"/")
+	}
+
+	if ok, err := deduplicateFileEntry(notePath, input.ToolName, displayPath); err == nil && ok {
+		note.ActivateInObsidian(notePath)
+		return nil
 	}
 
 	return appendToFile(notePath, fmt.Sprintf("> [!file] %s: %s (%s)\n\n", input.ToolName, displayPath, ts))
