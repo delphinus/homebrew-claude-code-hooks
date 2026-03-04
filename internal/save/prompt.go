@@ -25,6 +25,8 @@ func handleUserPromptSubmit(input *hookdata.HookInput) error {
 	// Re-post plan from previous session if available
 	repostPlan(notePath)
 
+	prompt = EnsureTableBlankLines(prompt)
+
 	ts := time.Now().Format("15:04:05")
 	content := fmt.Sprintf("## User (%s)\n\n%s\n\n", ts, prompt)
 

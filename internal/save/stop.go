@@ -32,6 +32,8 @@ func handleStop(input *hookdata.HookInput) error {
 		}
 	}
 
+	msg = EnsureTableBlankLines(msg)
+
 	ts := time.Now().Format("15:04:05")
 	content := fmt.Sprintf("## Assistant (%s)\n\n%s\n\n", ts, msg)
 

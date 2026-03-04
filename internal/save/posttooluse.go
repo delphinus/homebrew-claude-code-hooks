@@ -375,6 +375,8 @@ func recordLastAssistantMessage(input *hookdata.HookInput) error {
 		return err
 	}
 
+	msg = EnsureTableBlankLines(msg)
+
 	ts := time.Now().Format("15:04:05")
 	content := fmt.Sprintf("## Assistant (%s)\n\n%s\n\n", ts, msg)
 
