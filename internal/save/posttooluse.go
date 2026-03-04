@@ -277,7 +277,11 @@ func appendToFile(path, content string) error {
 	}
 	defer f.Close()
 	_, err = f.WriteString(content)
-	return err
+	if err != nil {
+		return err
+	}
+	note.ActivateInObsidian(path)
+	return nil
 }
 
 // recordLastAssistantMessage records the last assistant message if it hasn't been recorded yet.
