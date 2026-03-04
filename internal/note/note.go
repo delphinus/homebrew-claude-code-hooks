@@ -274,13 +274,15 @@ func advancedURI(vaultName, relPath string) string {
 // openInObsidian opens the given note in Obsidian.
 // Uses Advanced URI plugin (new tab) if available, otherwise falls back to obsidian://open.
 func openInObsidian(notePath string) {
+	root := vaultRoot(filepath.Dir(notePath))
+	if root == "" {
+		return
+	}
 	uri := obsidianOpenURL(notePath)
-	if root := vaultRoot(filepath.Dir(notePath)); root != "" {
-		if hasAdvancedURI(root) {
-			vaultName := filepath.Base(root)
-			if relPath, err := filepath.Rel(root, notePath); err == nil {
-				uri = advancedURI(vaultName, relPath)
-			}
+	if hasAdvancedURI(root) {
+		vaultName := filepath.Base(root)
+		if relPath, err := filepath.Rel(root, notePath); err == nil {
+			uri = advancedURI(vaultName, relPath)
 		}
 	}
 	exec.Command("open", "-g", uri).Start()
