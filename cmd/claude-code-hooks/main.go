@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/delphinus/homebrew-claude-code-hooks/internal/backfill"
+	"github.com/delphinus/homebrew-claude-code-hooks/internal/completion"
 	"github.com/delphinus/homebrew-claude-code-hooks/internal/hookdata"
 	"github.com/delphinus/homebrew-claude-code-hooks/internal/notify"
 	"github.com/delphinus/homebrew-claude-code-hooks/internal/save"
@@ -20,6 +21,7 @@ Commands:
   backfill [--dry-run]  Backfill related links between session notes
   notify TITLE MSG  Show macOS notification (suppressed if WezTerm pane is focused)
   setup [--diff]    Merge hooks.json into ~/.claude/settings.json
+  completion SHELL  Output shell completion script (bash, zsh, fish)
 
 Flags:
   --version, -v     Show version
@@ -71,6 +73,18 @@ func main() {
 	case "setup":
 		diffMode := len(os.Args) > 2 && os.Args[2] == "--diff"
 		err = setup.Run(diffMode)
+
+	case "completion":
+		if len(os.Args) < 3 {
+			fmt.Fprintln(os.Stderr, "usage: claude-code-hooks completion <bash|zsh|fish>")
+			os.Exit(1)
+		}
+		script, e := completion.Script(os.Args[2])
+		if e != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", e)
+			os.Exit(1)
+		}
+		fmt.Print(script)
 
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n\n", os.Args[1])

@@ -1,11 +1,12 @@
 # claude-code-hooks
 
-Claude Code での会話やツール操作を Obsidian ノートに自動記録するための Go バイナリ。4つのサブコマンドで構成される。
+Claude Code での会話やツール操作を Obsidian ノートに自動記録するための Go バイナリ。5つのサブコマンドで構成される。
 
 - **`claude-code-hooks save`** — Claude Code のフックから呼び出され、イベントをノートに追記する
 - **`claude-code-hooks backfill`** — 既存ノートに session リンクをバックフィルする
 - **`claude-code-hooks setup`** — フック設定を `~/.claude/settings.json` に適用する
 - **`claude-code-hooks notify`** — macOS 通知を表示するヘルパー（WezTerm のフォーカス検出対応）
+- **`claude-code-hooks completion`** — シェル補完スクリプトを出力する（Bash / Zsh / Fish 対応）
 
 ## インストール
 
@@ -100,6 +101,25 @@ macOS の通知を表示する。WezTerm 使用時は、現在のペインがフ
 
 ```bash
 claude-code-hooks notify 'タイトル' 'メッセージ'
+```
+
+### claude-code-hooks completion
+
+シェル補完スクリプトを出力する。Bash、Zsh、Fish に対応。
+
+Homebrew でインストールした場合は補完が自動的にインストールされるため、手動設定は不要。
+
+手動で設定する場合:
+
+```bash
+# Bash（~/.bashrc に追記）
+eval "$(claude-code-hooks completion bash)"
+
+# Zsh（~/.zshrc に追記）
+eval "$(claude-code-hooks completion zsh)"
+
+# Fish（~/.config/fish/config.fish に追記）
+claude-code-hooks completion fish | source
 ```
 
 ## 環境変数

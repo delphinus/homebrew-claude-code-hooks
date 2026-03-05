@@ -15,6 +15,10 @@ class ClaudeCodeHooks < Formula
   def install
     bin.install "claude-code-hooks"
     (share/"claude-code-hooks").install "share/hooks.json"
+
+    bash_completion.install Utils.safe_popen_read(bin/"claude-code-hooks", "completion", "bash").strip => "claude-code-hooks"
+    zsh_completion.install Utils.safe_popen_read(bin/"claude-code-hooks", "completion", "zsh").strip => "_claude-code-hooks"
+    fish_completion.install Utils.safe_popen_read(bin/"claude-code-hooks", "completion", "fish").strip => "claude-code-hooks.fish"
   end
 
   def caveats
@@ -26,6 +30,8 @@ class ClaudeCodeHooks < Formula
       差分を事前に確認するには:
 
         claude-code-hooks setup --diff
+
+      シェル補完は自動的にインストールされています（Bash / Zsh / Fish）。
 
       [推奨] Obsidian の Advanced URI プラグインを導入すると、
       ノートが新しいタブで開くようになります:
