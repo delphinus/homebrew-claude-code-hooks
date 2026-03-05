@@ -330,7 +330,6 @@ func handleEditWrite(input *hookdata.HookInput) error {
 	}
 
 	if ok, err := deduplicateFileEntry(notePath, input.ToolName, displayPath); err == nil && ok {
-		note.ActivateInObsidian(notePath)
 		return nil
 	}
 
@@ -344,11 +343,7 @@ func appendToFile(path, content string) error {
 	}
 	defer f.Close()
 	_, err = f.WriteString(content)
-	if err != nil {
-		return err
-	}
-	note.ActivateInObsidian(path)
-	return nil
+	return err
 }
 
 // recordLastAssistantMessage records the last assistant message if it hasn't been recorded yet.

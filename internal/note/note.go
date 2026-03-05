@@ -288,13 +288,3 @@ func openInObsidian(notePath string) {
 	exec.Command("open", "-g", uri).Start()
 }
 
-// ActivateInObsidian switches Obsidian to the tab showing the given note.
-// Uses obsidian://open (without openmode=tab) so it activates the existing tab
-// rather than opening a new one. Does nothing if the note is not inside an
-// Obsidian vault.
-func ActivateInObsidian(notePath string) {
-	if vaultRoot(filepath.Dir(notePath)) == "" {
-		return
-	}
-	exec.Command("open", "-g", obsidianOpenURL(notePath)).Start()
-}
