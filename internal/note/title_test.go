@@ -10,7 +10,7 @@ func TestMakeDisplayTitle(t *testing.T) {
 	}{
 		{"simple", "hello world", "hello world"},
 		{"with invalid chars", `hello/world\test:file*name?"<>|`, "helloworldtestfilename"},
-		{"hash and brackets", "#1272 で JWT の有効期限", "1272 で JWT の有効期限"},
+		{"hash and brackets", "#123 fix [the] bug", "123 fix the bug"},
 		{"backticks and square brackets", "`code` and [link]", "code and link"},
 		{"curly braces", "{key: value}", "key value"},
 		{"single quotes", "it's a test", "its a test"},
@@ -41,7 +41,7 @@ func TestMakeFilenameTitle(t *testing.T) {
 		{"multiple spaces", "hello   world", "hello-world"},
 		{"with invalid chars", `hello/world`, "helloworld"},
 		{"hash issue number", "#1272 で JWT の有効期限", "1272-で-JWT-の有効期限"},
-		{"backticks", "`code` and [link](url)", "code-and-link(url)"},
+		{"backticks and brackets", "`code` and [link](url)", "code-and-link(url)"},
 		{"multiline", "first line\nsecond line", "first-line"},
 		{"leading hyphens", "---hello", "hello"},
 		{"trailing hyphens", "hello---", "hello"},
