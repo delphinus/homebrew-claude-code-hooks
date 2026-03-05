@@ -16,9 +16,7 @@ class ClaudeCodeHooks < Formula
     bin.install "claude-code-hooks"
     (share/"claude-code-hooks").install "share/hooks.json"
 
-    bash_completion.install Utils.safe_popen_read(bin/"claude-code-hooks", "completion", "bash").strip => "claude-code-hooks"
-    zsh_completion.install Utils.safe_popen_read(bin/"claude-code-hooks", "completion", "zsh").strip => "_claude-code-hooks"
-    fish_completion.install Utils.safe_popen_read(bin/"claude-code-hooks", "completion", "fish").strip => "claude-code-hooks.fish"
+    generate_completions_from_executable(bin/"claude-code-hooks", "completion", shells: [:bash, :zsh, :fish])
   end
 
   def caveats
