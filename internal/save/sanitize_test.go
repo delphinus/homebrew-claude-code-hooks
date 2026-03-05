@@ -55,8 +55,8 @@ func TestEnsureTableBlankLines(t *testing.T) {
 		},
 		{
 			name: "real world case",
-			in:   "GitHub の5種類に対応：\n| タイプ | アイコン |\n|---|---|\n| NOTE | ℹ |\n\nNerd Font を使えば統一感が出ます。",
-			want: "GitHub の5種類に対応：\n\n| タイプ | アイコン |\n|---|---|\n| NOTE | ℹ |\n\nNerd Font を使えば統一感が出ます。",
+			in:   "There are 5 types:\n| Type | Icon |\n|---|---|\n| NOTE | info |\n\nUse Nerd Font for consistency.",
+			want: "There are 5 types:\n\n| Type | Icon |\n|---|---|\n| NOTE | info |\n\nUse Nerd Font for consistency.",
 		},
 	}
 

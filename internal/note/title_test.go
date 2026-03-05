@@ -40,7 +40,7 @@ func TestMakeFilenameTitle(t *testing.T) {
 		{"simple", "hello world", "hello-world"},
 		{"multiple spaces", "hello   world", "hello-world"},
 		{"with invalid chars", `hello/world`, "helloworld"},
-		{"hash issue number", "#1272 で JWT の有効期限", "1272-で-JWT-の有効期限"},
+		{"hash issue number", "#123 fix JWT expiry", "123-fix-JWT-expiry"},
 		{"backticks and brackets", "`code` and [link](url)", "code-and-link(url)"},
 		{"multiline", "first line\nsecond line", "first-line"},
 		{"leading hyphens", "---hello", "hello"},

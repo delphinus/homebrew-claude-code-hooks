@@ -425,7 +425,7 @@ func TestPlanMode_RepostOnSessionResume(t *testing.T) {
 		SessionID:     newSessionID,
 		HookEventName: "UserPromptSubmit",
 		CWD:           cwd,
-		Prompt:        "続きをお願いします",
+		Prompt:        "continue the work",
 	}
 	if err := Run(promptInput); err != nil {
 		t.Fatalf("UserPromptSubmit failed: %v", err)
@@ -475,7 +475,7 @@ func TestPlanMode_StaleRepostIgnored(t *testing.T) {
 		SessionID:     "unrelated-session",
 		HookEventName: "UserPromptSubmit",
 		CWD:           cwd,
-		Prompt:        "何か別の作業",
+		Prompt:        "do something else",
 	}
 	if err := Run(promptInput); err != nil {
 		t.Fatalf("UserPromptSubmit failed: %v", err)
