@@ -1,24 +1,20 @@
 class ClaudeCodeHooks < Formula
   desc "Claude Code hooks for Obsidian integration and notifications"
   homepage "https://github.com/delphinus/homebrew-claude-code-hooks"
-  version "2.15.0"
+  version "2.16.0"
 
   on_arm do
-    url "https://github.com/delphinus/homebrew-claude-code-hooks/releases/download/v2.15.0/claude-code-hooks_darwin_arm64.tar.gz"
-    sha256 "a6d0b198c0a949fc300b300cfac2bd6c3e4ed0a18e25c581fdab44b3ac6ec78e"
+    url "https://github.com/delphinus/homebrew-claude-code-hooks/releases/download/v2.16.0/claude-code-hooks_darwin_arm64.tar.gz"
+    sha256 "e983694274d95dd79a65633a70d4ac6447f20baadccde13735327a449ec1d901"
   end
   on_intel do
-    url "https://github.com/delphinus/homebrew-claude-code-hooks/releases/download/v2.15.0/claude-code-hooks_darwin_amd64.tar.gz"
-    sha256 "21dbdc590a5cbfe28777a9c0f16cc7a63d0fc6bc9c954ea5994cf52ed17e2ff5"
+    url "https://github.com/delphinus/homebrew-claude-code-hooks/releases/download/v2.16.0/claude-code-hooks_darwin_amd64.tar.gz"
+    sha256 "33532536aa131f080458ee4ccff5f8bbbdd11781b9d0b7b338f6edb02832eea6"
   end
 
   def install
     bin.install "claude-code-hooks"
     (share/"claude-code-hooks").install "share/hooks.json"
-
-    bash_completion.install Utils.safe_popen_read(bin/"claude-code-hooks", "completion", "bash").strip => "claude-code-hooks"
-    zsh_completion.install Utils.safe_popen_read(bin/"claude-code-hooks", "completion", "zsh").strip => "_claude-code-hooks"
-    fish_completion.install Utils.safe_popen_read(bin/"claude-code-hooks", "completion", "fish").strip => "claude-code-hooks.fish"
   end
 
   def caveats
@@ -30,8 +26,6 @@ class ClaudeCodeHooks < Formula
       差分を事前に確認するには:
 
         claude-code-hooks setup --diff
-
-      シェル補完は自動的にインストールされています（Bash / Zsh / Fish）。
 
       [推奨] Obsidian の Advanced URI プラグインを導入すると、
       ノートが新しいタブで開くようになります:
