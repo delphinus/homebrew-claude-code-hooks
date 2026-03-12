@@ -19,6 +19,11 @@ func setupTestDirs(t *testing.T) (vaultDir, cacheDir string) {
 	cacheDir = t.TempDir()
 	t.Setenv("CLAUDE_OBSIDIAN_VAULT", vaultDir)
 	t.Setenv("CLAUDE_OBSIDIAN_CACHE", cacheDir)
+
+	// Run SessionEnd inline in tests (no background process)
+	sessionEndSync = true
+	t.Cleanup(func() { sessionEndSync = false })
+
 	return vaultDir, cacheDir
 }
 

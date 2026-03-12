@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/delphinus/homebrew-claude-code-hooks/internal/config"
 	"github.com/delphinus/homebrew-claude-code-hooks/internal/frontmatter"
@@ -13,6 +15,13 @@ import (
 	"github.com/delphinus/homebrew-claude-code-hooks/internal/note"
 )
 
+// sessionEndSync controls whether SessionEnd runs inline (for tests)
+// or spawns a detached background process (production).
+var sessionEndSync bool
+
+// handleSessionEnd spawns a detached background process to generate
+// summaries and titles, then returns immediately so the hook exits
+// before Claude Code kills it during shutdown.
 func handleSessionEnd(input *hookdata.HookInput) error {
 	cacheDir := config.CacheDir()
 	sessionCachePath := filepath.Join(cacheDir, input.SessionID)
@@ -21,13 +30,47 @@ func handleSessionEnd(input *hookdata.HookInput) error {
 		return nil
 	}
 
+	if sessionEndSync {
+		RunSessionEndBG(input.SessionID)
+		return nil
+	}
+
+	// Spawn a detached background process to do the heavy work
+	// (calling claude -p for summaries/titles). The hook returns
+	// immediately so Claude Code won't kill us during shutdown.
+	exe, err := os.Executable()
+	if err != nil {
+		return nil
+	}
+
+	cmd := exec.Command(exe, "_session-end-bg", input.SessionID)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+	cmd.Stdin = nil
+	if err := cmd.Start(); err != nil {
+		return nil
+	}
+
+	// Detach: don't wait for the child
+	cmd.Process.Release()
+	return nil
+}
+
+// RunSessionEndBG is the background worker for SessionEnd processing.
+// It is invoked as: claude-code-hooks _session-end-bg <session_id>
+func RunSessionEndBG(sessionID string) {
+	// Ignore signals so we survive even if parent is killed
+	signal.Ignore(syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
+
+	cacheDir := config.CacheDir()
+	sessionCachePath := filepath.Join(cacheDir, sessionID)
 	vaultDir := config.VaultDir()
 
-	// Find all notes for this session
-	sessionNotes, err := note.FindNotesBySessionID(input.SessionID, vaultDir)
+	sessionNotes, err := note.FindNotesBySessionID(sessionID, vaultDir)
 	if err != nil || len(sessionNotes) == 0 {
 		os.Remove(sessionCachePath)
-		return nil
+		return
 	}
 
 	for _, notePath := range sessionNotes {
@@ -35,16 +78,13 @@ func handleSessionEnd(input *hookdata.HookInput) error {
 			continue
 		}
 
-		// Flush any cached plan that wasn't written (e.g. ExitPlanMode didn't fire)
-		flushCachedPlan(input.SessionID, notePath)
+		flushCachedPlan(sessionID, notePath)
 
-		// Read note content (up to 100KB)
 		noteContent, err := readHead(notePath, 100000)
 		if err != nil {
 			continue
 		}
 
-		// Generate summary using claude CLI
 		summary := claudeGenerate(
 			"以下の Claude Code の会話ログを日本語で3〜5行で要約してください。要約のみを出力し、前置きは不要です。",
 			noteContent,
@@ -54,7 +94,6 @@ func handleSessionEnd(input *hookdata.HookInput) error {
 			insertSummary(notePath, summary)
 		}
 
-		// Check if title is just the project name (fallback value)
 		basename := strings.TrimSuffix(filepath.Base(notePath), ".md")
 		parts := strings.SplitN(basename, "-", 4)
 		if len(parts) < 4 {
@@ -76,11 +115,8 @@ func handleSessionEnd(input *hookdata.HookInput) error {
 		}
 	}
 
-	// Clean up session cache files (plan cache is already cleaned by flushCachedPlan)
 	os.Remove(sessionCachePath)
-	os.Remove(filepath.Join(cacheDir, input.SessionID+"-last-msg"))
-
-	return nil
+	os.Remove(filepath.Join(cacheDir, sessionID+"-last-msg"))
 }
 
 func readHead(path string, maxBytes int) (string, error) {
@@ -98,6 +134,7 @@ func readHead(path string, maxBytes int) (string, error) {
 func claudeGenerate(prompt, content string) string {
 	cmd := exec.Command("claude", "-p", "--model", "haiku", "--setting-sources", "")
 	cmd.Stdin = strings.NewReader(content)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 	// Filter out CLAUDECODE to avoid "nested session" rejection.
 	// --setting-sources "" prevents loading hooks config, so the inner
@@ -110,7 +147,6 @@ func claudeGenerate(prompt, content string) string {
 	}
 	cmd.Env = env
 
-	// Pass prompt via args
 	cmd.Args = append(cmd.Args, prompt)
 
 	out, err := cmd.Output()

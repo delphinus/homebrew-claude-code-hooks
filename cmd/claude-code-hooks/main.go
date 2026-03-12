@@ -74,6 +74,13 @@ func main() {
 		diffMode := len(os.Args) > 2 && os.Args[2] == "--diff"
 		err = setup.Run(diffMode)
 
+	case "_session-end-bg":
+		if len(os.Args) < 3 {
+			os.Exit(1)
+		}
+		save.RunSessionEndBG(os.Args[2])
+		return
+
 	case "completion":
 		if len(os.Args) < 3 {
 			fmt.Fprintln(os.Stderr, "usage: claude-code-hooks completion <bash|zsh|fish>")
