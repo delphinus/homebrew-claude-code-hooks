@@ -96,18 +96,19 @@ func readHead(path string, maxBytes int) (string, error) {
 }
 
 func claudeGenerate(prompt, content string) string {
-	cmd := exec.Command("claude", "-p", "--model", "haiku")
+	cmd := exec.Command("claude", "-p", "--model", "haiku", "--setting-sources", "")
 	cmd.Stdin = strings.NewReader(content)
 
-	// Filter out CLAUDECODE to avoid "nested session" rejection,
-	// and add CLAUDE_OBSIDIAN_SAVING to prevent hook recursion.
+	// Filter out CLAUDECODE to avoid "nested session" rejection.
+	// --setting-sources "" prevents loading hooks config, so the inner
+	// claude -p session won't fire its own SessionEnd hook.
 	var env []string
 	for _, e := range os.Environ() {
 		if !strings.HasPrefix(e, "CLAUDECODE=") {
 			env = append(env, e)
 		}
 	}
-	cmd.Env = append(env, "CLAUDE_OBSIDIAN_SAVING=1")
+	cmd.Env = env
 
 	// Pass prompt via args
 	cmd.Args = append(cmd.Args, prompt)
