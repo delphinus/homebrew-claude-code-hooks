@@ -12,9 +12,10 @@ type Frontmatter struct {
 	Tags      []string `yaml:"tags"`
 	Date      string   `yaml:"date"`
 	SessionID string   `yaml:"session_id"`
-	Hostname  string   `yaml:"hostname"`
-	CWD       string   `yaml:"cwd"`
-	Related   []string `yaml:"related,omitempty"`
+	Hostname     string   `yaml:"hostname"`
+	CWD          string   `yaml:"cwd"`
+	ClaudeVersion string  `yaml:"claude_version,omitempty"`
+	Related      []string `yaml:"related,omitempty"`
 }
 
 // Parse splits a note into its frontmatter and body.
@@ -97,6 +98,8 @@ func parseYAML(s string, fm *Frontmatter) error {
 			fm.Hostname = val
 		case "cwd":
 			fm.CWD = val
+		case "claude_version":
+			fm.ClaudeVersion = val
 		}
 	}
 
@@ -124,6 +127,10 @@ func (f *Frontmatter) Render() string {
 	fmt.Fprintf(&b, "session_id: %s\n", f.SessionID)
 	fmt.Fprintf(&b, "hostname: %s\n", f.Hostname)
 	fmt.Fprintf(&b, "cwd: %s\n", f.CWD)
+
+	if f.ClaudeVersion != "" {
+		fmt.Fprintf(&b, "claude_version: %s\n", f.ClaudeVersion)
+	}
 
 	if len(f.Related) > 0 {
 		b.WriteString("related:\n")

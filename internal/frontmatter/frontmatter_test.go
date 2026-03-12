@@ -16,6 +16,7 @@ date: 2025-01-01T12:00:00
 session_id: abc123
 hostname: myhost
 cwd: /tmp/project
+claude_version: 2.1.74 (Claude Code)
 related:
   - "[[other-note]]"
 ---
@@ -50,6 +51,9 @@ Hello
 	}
 	if fm.CWD != "/tmp/project" {
 		t.Errorf("CWD = %q, want %q", fm.CWD, "/tmp/project")
+	}
+	if fm.ClaudeVersion != "2.1.74 (Claude Code)" {
+		t.Errorf("ClaudeVersion = %q, want %q", fm.ClaudeVersion, "2.1.74 (Claude Code)")
 	}
 	if len(fm.Related) != 1 || fm.Related[0] != `"[[other-note]]"` {
 		t.Errorf("Related = %v, want [\"[[other-note]]\"]", fm.Related)
@@ -137,14 +141,15 @@ func TestParseNoFrontmatter(t *testing.T) {
 
 func TestRoundTrip(t *testing.T) {
 	fm := &Frontmatter{
-		ID:        "20250101-120000-abc1-test",
-		Aliases:   []string{"Test Title"},
-		Tags:      []string{"claude-code"},
-		Date:      "2025-01-01T12:00:00",
-		SessionID: "abc123",
-		Hostname:  "myhost",
-		CWD:       "/tmp/project",
-		Related:   []string{`"[[other-note]]"`},
+		ID:            "20250101-120000-abc1-test",
+		Aliases:       []string{"Test Title"},
+		Tags:          []string{"claude-code"},
+		Date:          "2025-01-01T12:00:00",
+		SessionID:     "abc123",
+		Hostname:      "myhost",
+		CWD:           "/tmp/project",
+		ClaudeVersion: "2.1.74 (Claude Code)",
+		Related:       []string{`"[[other-note]]"`},
 	}
 
 	rendered := fm.Render()
@@ -158,6 +163,9 @@ func TestRoundTrip(t *testing.T) {
 	}
 	if parsed.SessionID != fm.SessionID {
 		t.Errorf("SessionID mismatch: %q vs %q", parsed.SessionID, fm.SessionID)
+	}
+	if parsed.ClaudeVersion != fm.ClaudeVersion {
+		t.Errorf("ClaudeVersion mismatch: %q vs %q", parsed.ClaudeVersion, fm.ClaudeVersion)
 	}
 	if !strings.Contains(body, "Body text") {
 		t.Errorf("body should contain 'Body text', got %q", body)

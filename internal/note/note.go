@@ -119,13 +119,14 @@ func GetOrCreateNote(sessionID, cwd, prompt string) (string, error) {
 
 	// Build frontmatter
 	fm := &frontmatter.Frontmatter{
-		ID:        noteID,
-		Aliases:   []string{displayTitle},
-		Tags:      []string{"claude-code"},
-		Date:      now.Format("2006-01-02T15:04:05"),
-		SessionID: sessionID,
-		Hostname:  hostname(),
-		CWD:       cwd,
+		ID:            noteID,
+		Aliases:       []string{displayTitle},
+		Tags:          []string{"claude-code"},
+		Date:          now.Format("2006-01-02T15:04:05"),
+		SessionID:     sessionID,
+		Hostname:      hostname(),
+		CWD:           cwd,
+		ClaudeVersion: claudeVersion(),
 	}
 	if len(prevNames) > 0 {
 		for _, pn := range prevNames {
@@ -235,6 +236,14 @@ func hostname() string {
 		return "unknown"
 	}
 	return h
+}
+
+func claudeVersion() string {
+	out, err := exec.Command("claude", "--version").Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
 }
 
 // vaultRoot walks up from dir looking for an .obsidian directory.
