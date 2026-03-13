@@ -281,10 +281,17 @@ func advancedURI(vaultName, relPath string) string {
 }
 
 // openInObsidian opens the given note in Obsidian.
+// Skips if the file is already open in Obsidian (checks workspace.json).
 // Uses Advanced URI plugin (new tab) if available, otherwise falls back to obsidian://open.
+// Closes old tabs via REST API when the tracked count exceeds maxTabs.
 func openInObsidian(notePath string) {
 	root := vaultRoot(filepath.Dir(notePath))
 	if root == "" {
+		return
+	}
+
+	if isFileOpenInObsidian(root, notePath) {
+		trackTab(notePath)
 		return
 	}
 	uri := obsidianOpenURL(notePath)
@@ -295,5 +302,14 @@ func openInObsidian(notePath string) {
 		}
 	}
 	exec.Command("open", "-g", uri).Start()
+
+	toClose := trackTab(notePath)
+	if len(toClose) > 0 {
+		// Check REST API and workspace state synchronously (so warnings are visible)
+		cfg, relPaths := prepareCloseOldTabs(root, toClose)
+		if cfg != nil && len(relPaths) > 0 {
+			go closeTabsAsync(cfg, relPaths)
+		}
+	}
 }
 
