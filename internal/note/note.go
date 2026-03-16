@@ -308,7 +308,7 @@ func openInObsidian(notePath string) {
 		// Check REST API and workspace state synchronously (so warnings are visible)
 		cfg, relPaths := prepareCloseOldTabs(root, toClose)
 		if cfg != nil && len(relPaths) > 0 {
-			go closeTabsAsync(cfg, relPaths)
+			closeTabsAsync(cfg, relPaths)
 		}
 	}
 }
