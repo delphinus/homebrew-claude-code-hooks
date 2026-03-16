@@ -156,6 +156,15 @@ func claudeGenerate(prompt, content string) string {
 	return strings.TrimSpace(string(out))
 }
 
+func buildSummaryBlock(summary string) string {
+	var b strings.Builder
+	b.WriteString("> [!summary]\n")
+	for _, line := range strings.Split(summary, "\n") {
+		fmt.Fprintf(&b, "> %s\n", line)
+	}
+	return b.String()
+}
+
 func insertSummary(notePath, summary string) {
 	content, err := os.ReadFile(notePath)
 	if err != nil {
@@ -163,9 +172,30 @@ func insertSummary(notePath, summary string) {
 	}
 
 	text := string(content)
+	summaryBlock := buildSummaryBlock(summary)
 
-	// Skip if summary already exists
-	if strings.Contains(text, "> [!summary]") {
+	// Replace existing summary if present
+	if start := strings.Index(text, "> [!summary]\n"); start >= 0 {
+		// Find the end of the summary block (consecutive "> " lines)
+		end := start + len("> [!summary]\n")
+		for end < len(text) {
+			lineEnd := strings.Index(text[end:], "\n")
+			if lineEnd < 0 {
+				end = len(text)
+				break
+			}
+			line := text[end : end+lineEnd]
+			if !strings.HasPrefix(line, "> ") {
+				break
+			}
+			end += lineEnd + 1
+		}
+
+		var b strings.Builder
+		b.WriteString(text[:start])
+		b.WriteString(summaryBlock)
+		b.WriteString(text[end:])
+		os.WriteFile(notePath, []byte(b.String()), 0o644)
 		return
 	}
 
@@ -185,10 +215,8 @@ func insertSummary(notePath, summary string) {
 
 	var b strings.Builder
 	b.WriteString(text[:insertPos])
-	b.WriteString("\n> [!summary]\n")
-	for _, line := range strings.Split(summary, "\n") {
-		fmt.Fprintf(&b, "> %s\n", line)
-	}
+	b.WriteString("\n")
+	b.WriteString(summaryBlock)
 	b.WriteString("\n")
 	b.WriteString(text[insertPos:])
 
