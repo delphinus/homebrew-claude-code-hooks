@@ -113,7 +113,13 @@ claude-code-hooks tabcolor <startup|thinking|idle|waiting|default>
 ```
 
 - WezTerm 外（`WEZTERM_PANE` 未設定）では何もしない。
-- 装飾目的なので `wezterm cli` の失敗は握り潰し、フックの流れを止めない。
+- 装飾目的なので失敗は握り潰し、フックの流れを止めない。
+
+#### 仕組み
+
+WezTerm には user var をセットする CLI が無いため、`claude_state` は OSC 1337 `SetUserVar` エスケープシーケンスで設定する。フックの標準出力は Claude Code にキャプチャされ `/dev/tty` も使えないことがあるので、対話実行で標準出力が端末のときはそこへ、そうでないときは `wezterm cli list` で `$WEZTERM_PANE` の tty デバイスを引いてそこへ書き込む。user var は mux 経由で GUI クライアントへ同期される。
+
+mux 多重化環境では GUI 側のペイン ID が `$WEZTERM_PANE` と一致せず、また Claude のペインがタブのアクティブペインとは限らない。そのため `format-tab-title` 側は `active_pane` だけでなく**タブ内の全ペイン**を走査し、`claude_state` が立っているペインがあればそのタブを塗る。
 
 #### 状態と対応イベント
 
@@ -127,7 +133,7 @@ claude-code-hooks tabcolor <startup|thinking|idle|waiting|default>
 
 #### WezTerm 側の設定
 
-`wezterm.lua`（または `format-tab-title` を定義しているファイル）で user var を読んでタブを塗る。`use_fancy_tab_bar = true` でもタブ背景に反映される。
+`wezterm.lua`（または `format-tab-title` を定義しているファイル）で user var を読んでタブを塗る。`use_fancy_tab_bar = true` でもタブ背景に反映される。`active_pane` だけでなくタブ内の全ペイン (`tab.panes`) を走査するのがポイント。
 
 ```lua
 local STATE_BG = {
@@ -137,8 +143,20 @@ local STATE_BG = {
   waiting = "#e0af68",
 }
 
+-- タブ内のいずれかのペインに claude_state が立っていれば、その色を返す
+local function claude_bg(tab)
+  for _, p in ipairs(tab.panes) do
+    local uv = p.user_vars
+    local s = uv and uv.claude_state
+    if s and STATE_BG[s] then
+      return STATE_BG[s]
+    end
+  end
+  return nil
+end
+
 wezterm.on("format-tab-title", function(tab, tabs, panes, config, hover, max_width)
-  local bg = STATE_BG[tab.active_pane.user_vars.claude_state or ""]
+  local bg = claude_bg(tab)
   local title = " " .. (tab.active_pane.title or "") .. " "
   if bg then
     return {
