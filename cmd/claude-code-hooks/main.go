@@ -10,6 +10,7 @@ import (
 	"github.com/delphinus/homebrew-claude-code-hooks/internal/notify"
 	"github.com/delphinus/homebrew-claude-code-hooks/internal/save"
 	"github.com/delphinus/homebrew-claude-code-hooks/internal/setup"
+	"github.com/delphinus/homebrew-claude-code-hooks/internal/tabcolor"
 )
 
 var version = "dev"
@@ -20,6 +21,7 @@ Commands:
   save              Save Claude Code conversation to Obsidian (reads JSON from stdin)
   backfill [--dry-run]  Backfill related links between session notes
   notify TITLE MSG  Show macOS notification (suppressed if WezTerm pane is focused)
+  tabcolor STATE    Set WezTerm tab color for Claude Code state (startup|thinking|idle|waiting|default)
   setup [--diff]    Merge hooks.json into ~/.claude/settings.json
   completion SHELL  Output shell completion script (bash, zsh, fish)
 
@@ -69,6 +71,13 @@ func main() {
 			message = os.Args[3]
 		}
 		err = notify.Run(title, message)
+
+	case "tabcolor":
+		if len(os.Args) < 3 {
+			fmt.Fprintln(os.Stderr, "usage: claude-code-hooks tabcolor <startup|thinking|idle|waiting|default>")
+			os.Exit(1)
+		}
+		err = tabcolor.Run(os.Args[2])
 
 	case "setup":
 		diffMode := len(os.Args) > 2 && os.Args[2] == "--diff"
