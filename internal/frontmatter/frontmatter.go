@@ -7,15 +7,16 @@ import (
 
 // Frontmatter represents the YAML frontmatter of an Obsidian note.
 type Frontmatter struct {
-	ID        string   `yaml:"id"`
-	Aliases   []string `yaml:"aliases"`
-	Tags      []string `yaml:"tags"`
-	Date      string   `yaml:"date"`
-	SessionID string   `yaml:"session_id"`
-	Hostname     string   `yaml:"hostname"`
-	CWD          string   `yaml:"cwd"`
-	ClaudeVersion string  `yaml:"claude_version,omitempty"`
-	Related      []string `yaml:"related,omitempty"`
+	ID            string   `yaml:"id"`
+	Aliases       []string `yaml:"aliases"`
+	Tags          []string `yaml:"tags"`
+	Date          string   `yaml:"date"`
+	Ended         string   `yaml:"ended,omitempty"`
+	SessionID     string   `yaml:"session_id"`
+	Hostname      string   `yaml:"hostname"`
+	CWD           string   `yaml:"cwd"`
+	ClaudeVersion string   `yaml:"claude_version,omitempty"`
+	Related       []string `yaml:"related,omitempty"`
 }
 
 // Parse splits a note into its frontmatter and body.
@@ -92,6 +93,8 @@ func parseYAML(s string, fm *Frontmatter) error {
 			fm.ID = val
 		case "date":
 			fm.Date = val
+		case "ended":
+			fm.Ended = val
 		case "session_id":
 			fm.SessionID = val
 		case "hostname":
@@ -124,6 +127,9 @@ func (f *Frontmatter) Render() string {
 	}
 
 	fmt.Fprintf(&b, "date: %s\n", f.Date)
+	if f.Ended != "" {
+		fmt.Fprintf(&b, "ended: %s\n", f.Ended)
+	}
 	fmt.Fprintf(&b, "session_id: %s\n", f.SessionID)
 	fmt.Fprintf(&b, "hostname: %s\n", f.Hostname)
 	fmt.Fprintf(&b, "cwd: %s\n", f.CWD)
