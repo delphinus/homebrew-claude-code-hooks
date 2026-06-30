@@ -9,6 +9,11 @@ import (
 
 // writeNote creates a note file with frontmatter and sets its mod time.
 func writeNote(t *testing.T, dir, name, sessionID, alias string, mod time.Time) string {
+	return writeNoteCWD(t, dir, name, sessionID, alias, "/home/me/proj", mod)
+}
+
+// writeNoteCWD is like writeNote but lets the test set the frontmatter cwd.
+func writeNoteCWD(t *testing.T, dir, name, sessionID, alias, cwd string, mod time.Time) string {
 	t.Helper()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
@@ -16,7 +21,7 @@ func writeNote(t *testing.T, dir, name, sessionID, alias string, mod time.Time) 
 	path := filepath.Join(dir, name)
 	content := "---\nid: x\naliases:\n  - " + alias +
 		"\ntags:\n  - claude-code\nsession_id: " + sessionID +
-		"\ncwd: /home/me/proj\n---\n\nbody\n"
+		"\ncwd: " + cwd + "\n---\n\nbody\n"
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -75,6 +80,38 @@ func TestMostRecentNote(t *testing.T) {
 	if got != paths["new"] {
 		t.Errorf("MostRecentNote() = %q, want %q", got, paths["new"])
 	}
+}
+
+func TestMostRecentNoteForCWD(t *testing.T) {
+	vault := t.TempDir()
+	t.Setenv("CLAUDE_OBSIDIAN_VAULT", vault)
+	t.Setenv("CLAUDE_OBSIDIAN_CACHE", t.TempDir())
+	base := time.Date(2026, 6, 30, 12, 0, 0, 0, time.UTC)
+
+	// The newest note belongs to a different cwd (a concurrent session).
+	writeNoteCWD(t, filepath.Join(vault, "other"), "20260630-150000-oooo-other.md", "oooo", "Other", "/work/other", base.Add(3*time.Hour))
+	// An older note belongs to the target cwd.
+	want := writeNoteCWD(t, filepath.Join(vault, "target"), "20260630-120000-tttt-target.md", "tttt", "Target", "/work/target", base)
+
+	t.Run("exact cwd wins over newer different cwd", func(t *testing.T) {
+		got, err := MostRecentNoteForCWD("/work/target")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	})
+
+	t.Run("no cwd match falls back to global newest", func(t *testing.T) {
+		got, err := MostRecentNoteForCWD("/work/nonexistent")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got != filepath.Join(vault, "other", "20260630-150000-oooo-other.md") {
+			t.Errorf("got %q, want the global newest note", got)
+		}
+	})
 }
 
 func TestRecentNotes_Limit(t *testing.T) {

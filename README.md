@@ -90,7 +90,7 @@ YYYYMMDD-HHMMSS-SSID-タイトル.md
 セッションのノートを Obsidian で開く。セッション開始時の自動オープンは既定で無効 (`CLAUDE_OBSIDIAN_AUTO_OPEN` 参照) なので、見たいときにこのコマンドで開く。Advanced URI プラグインがあれば新しいタブで開く。
 
 ```bash
-# 現在のセッション（= 最新更新ノート）を開く
+# 現在のセッションのノートを開く（実行した cwd に一致する最新ノート → 同一リポジトリ → 全体の最新）
 claude-code-hooks open
 
 # 最近のセッションノートを JSON で列挙（既定 20 件）

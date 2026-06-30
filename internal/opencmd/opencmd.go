@@ -39,7 +39,8 @@ func Run(args []string) error {
 	)
 	switch {
 	case len(args) == 0:
-		target, err = note.MostRecentNote()
+		cwd, _ := os.Getwd()
+		target, err = note.MostRecentNoteForCWD(cwd)
 	case strings.HasSuffix(args[0], ".md") && fileExists(args[0]):
 		target = args[0]
 	default:

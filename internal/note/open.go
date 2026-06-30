@@ -124,8 +124,6 @@ func RecentNotes(limit int) ([]NoteMeta, error) {
 }
 
 // MostRecentNote returns the path of the most recently modified session note.
-// This is the note for the currently active session, since it is appended to
-// on every tool use.
 func MostRecentNote() (string, error) {
 	metas, err := ListNotes()
 	if err != nil {
@@ -133,6 +131,38 @@ func MostRecentNote() (string, error) {
 	}
 	if len(metas) == 0 {
 		return "", fmt.Errorf("no session notes found")
+	}
+	return metas[0].Path, nil
+}
+
+// MostRecentNoteForCWD returns the note that most likely belongs to the session
+// running in cwd. It prefers, in order: the most recent note whose frontmatter
+// cwd matches exactly, then the most recent note in the same repository
+// (project), and finally the most recent note overall. Scoping by cwd avoids
+// picking another concurrently active session's note.
+func MostRecentNoteForCWD(cwd string) (string, error) {
+	metas, err := ListNotes()
+	if err != nil {
+		return "", err
+	}
+	if len(metas) == 0 {
+		return "", fmt.Errorf("no session notes found")
+	}
+	// metas is newest-first, so the first match in each pass is the most recent.
+	if cwd != "" {
+		for _, m := range metas {
+			if m.CWD == cwd {
+				return m.Path, nil
+			}
+		}
+		project := filepath.Base(repoRoot(cwd))
+		if project != "" && project != "." && project != string(filepath.Separator) {
+			for _, m := range metas {
+				if m.Project == project {
+					return m.Path, nil
+				}
+			}
+		}
 	}
 	return metas[0].Path, nil
 }
