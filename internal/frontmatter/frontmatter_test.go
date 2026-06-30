@@ -171,3 +171,36 @@ func TestRoundTrip(t *testing.T) {
 		t.Errorf("body should contain 'Body text', got %q", body)
 	}
 }
+
+func TestEndedRoundTrip(t *testing.T) {
+	fm := &Frontmatter{
+		ID:        "id",
+		Aliases:   []string{"T"},
+		Tags:      []string{"claude-code"},
+		Date:      "2026-06-29T11:28:00",
+		Ended:     "2026-06-29T18:02:33",
+		SessionID: "s",
+		Hostname:  "h",
+		CWD:       "/tmp",
+	}
+
+	rendered := fm.Render()
+	if !strings.Contains(rendered, "date: 2026-06-29T11:28:00\nended: 2026-06-29T18:02:33\nsession_id: s\n") {
+		t.Errorf("ended should render right after date:\n%s", rendered)
+	}
+
+	parsed, _, err := Parse(rendered + "\nbody\n")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if parsed.Ended != "2026-06-29T18:02:33" {
+		t.Errorf("Ended = %q, want %q", parsed.Ended, "2026-06-29T18:02:33")
+	}
+}
+
+func TestRenderNoEnded(t *testing.T) {
+	fm := &Frontmatter{ID: "id", Date: "2026-06-29T11:28:00"}
+	if strings.Contains(fm.Render(), "ended:") {
+		t.Error("should omit ended when empty")
+	}
+}

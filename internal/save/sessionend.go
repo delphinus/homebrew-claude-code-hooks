@@ -6,8 +6,11 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/delphinus/homebrew-claude-code-hooks/internal/config"
 	"github.com/delphinus/homebrew-claude-code-hooks/internal/frontmatter"
@@ -85,12 +88,29 @@ func RunSessionEndBG(sessionID string) {
 			continue
 		}
 
+		// Record the session end time (= last activity) into frontmatter.
+		// "ended" is the last `## Assistant (HH:MM:SS)` timestamp, which tracks
+		// real work end without the idle inflation of the actual quit time.
+		start := ""
+		if fm, _, perr := frontmatter.Parse(noteContent); perr == nil {
+			start = fm.Date
+		}
+		ended := lastActivityTime(notePath, start)
+		if ended == "" {
+			ended = time.Now().Format("2006-01-02T15:04:05")
+		}
+		setEnded(notePath, ended)
+
 		summary := claudeGenerate(
 			"以下の Claude Code の会話ログを日本語で3〜5行で要約してください。要約のみを出力し、前置きは不要です。",
 			noteContent,
 		)
 
 		if summary != "" {
+			// Prepend a human-readable time line to the summary callout.
+			if tl := summaryTimeLine(start, ended); tl != "" {
+				summary = tl + "\n" + summary
+			}
 			insertSummary(notePath, summary)
 		}
 
@@ -129,6 +149,77 @@ func readHead(path string, maxBytes int) (string, error) {
 	buf := make([]byte, maxBytes)
 	n, _ := f.Read(buf)
 	return string(buf[:n]), nil
+}
+
+var assistantTSRe = regexp.MustCompile(`(?m)^## Assistant \((\d{2}):(\d{2}):(\d{2})\)`)
+
+// lastActivityTime returns the timestamp of the last "## Assistant (HH:MM:SS)"
+// heading in the note, combined with the date from dateStr (frontmatter "date",
+// formatted "2006-01-02T15:04:05"). This is the last real activity, used as the
+// session end time (no idle inflation). If the last activity's clock time is
+// earlier than the start, the session crossed midnight and a day is added.
+// Returns "" if the note has no assistant heading or dateStr is unparseable.
+func lastActivityTime(notePath, dateStr string) string {
+	content, err := os.ReadFile(notePath)
+	if err != nil {
+		return ""
+	}
+	matches := assistantTSRe.FindAllStringSubmatch(string(content), -1)
+	if len(matches) == 0 {
+		return ""
+	}
+	last := matches[len(matches)-1]
+
+	const layout = "2006-01-02T15:04:05"
+	start, err := time.ParseInLocation(layout, dateStr, time.Local)
+	if err != nil {
+		return ""
+	}
+	hh, _ := strconv.Atoi(last[1])
+	mm, _ := strconv.Atoi(last[2])
+	ss, _ := strconv.Atoi(last[3])
+	end := time.Date(start.Year(), start.Month(), start.Day(), hh, mm, ss, 0, time.Local)
+	if end.Before(start) {
+		end = end.Add(24 * time.Hour)
+	}
+	return end.Format(layout)
+}
+
+// setEnded writes the ended timestamp into the note's frontmatter.
+func setEnded(notePath, ended string) {
+	content, err := os.ReadFile(notePath)
+	if err != nil {
+		return
+	}
+	fm, body, err := frontmatter.Parse(string(content))
+	if err != nil {
+		return
+	}
+	fm.Ended = ended
+	os.WriteFile(notePath, []byte(fm.Render()+body), 0o644)
+}
+
+// summaryTimeLine renders a "⏱ HH:MM–HH:MM (Xh Ym)" line for the summary callout
+// from start/ended (both "2006-01-02T15:04:05"). Returns "" if either is
+// unparseable.
+func summaryTimeLine(start, ended string) string {
+	const layout = "2006-01-02T15:04:05"
+	s, err1 := time.ParseInLocation(layout, start, time.Local)
+	e, err2 := time.ParseInLocation(layout, ended, time.Local)
+	if err1 != nil || err2 != nil {
+		return ""
+	}
+	d := e.Sub(s)
+	if d < 0 {
+		d = 0
+	}
+	h := int(d.Hours())
+	m := int(d.Minutes()) % 60
+	cross := ""
+	if s.YearDay() != e.YearDay() || s.Year() != e.Year() {
+		cross = "(+1d)"
+	}
+	return fmt.Sprintf("⏱ %s–%s%s (%dh%02dm)", s.Format("15:04"), e.Format("15:04"), cross, h, m)
 }
 
 func claudeGenerate(prompt, content string) string {
