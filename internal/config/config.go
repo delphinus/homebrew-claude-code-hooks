@@ -46,3 +46,10 @@ func CacheDir() string {
 	}
 	return filepath.Join(home, defaultCacheSubdir)
 }
+
+// OpenInObsidian reports whether newly created notes should be opened in
+// Obsidian automatically. Disabled by default; returns true only when
+// CLAUDE_OBSIDIAN_AUTO_OPEN is set to a non-empty value.
+func OpenInObsidian() bool {
+	return os.Getenv("CLAUDE_OBSIDIAN_AUTO_OPEN") != ""
+}

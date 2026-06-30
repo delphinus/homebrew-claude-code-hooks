@@ -193,6 +193,7 @@ claude-code-hooks completion fish | source
 | 変数名 | 説明 |
 |---|---|
 | `CLAUDE_OBSIDIAN_VAULT` | Obsidian vault パスの上書き（デフォルト: iCloud 上の `Notes/Claude Code`） |
+| `CLAUDE_OBSIDIAN_AUTO_OPEN` | セッション開始時にノートを Obsidian で自動で開く（既定は開かない。値が空でなければ有効化） |
 
 ## 前提条件
 

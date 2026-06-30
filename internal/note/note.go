@@ -156,7 +156,9 @@ func GetOrCreateNote(sessionID, cwd, prompt string) (string, error) {
 		return "", fmt.Errorf("writing note: %w", err)
 	}
 
-	openInObsidian(notePath)
+	if config.OpenInObsidian() {
+		openInObsidian(notePath)
+	}
 
 	// Add "Continued in" link to old note
 	if oldNote != "" {
