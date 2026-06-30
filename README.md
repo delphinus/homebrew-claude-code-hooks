@@ -1,8 +1,9 @@
 # claude-code-hooks
 
-Claude Code での会話やツール操作を Obsidian ノートに自動記録するための Go バイナリ。5つのサブコマンドで構成される。
+Claude Code での会話やツール操作を Obsidian ノートに自動記録するための Go バイナリ。6つのサブコマンドで構成される。
 
 - **`claude-code-hooks save`** — Claude Code のフックから呼び出され、イベントをノートに追記する
+- **`claude-code-hooks open`** — セッションのノートを Obsidian で開く（引数なしで現在のセッション）
 - **`claude-code-hooks backfill`** — 既存ノートに session リンクをバックフィルする
 - **`claude-code-hooks setup`** — フック設定を `~/.claude/settings.json` に適用する
 - **`claude-code-hooks notify`** — macOS 通知を表示するヘルパー（WezTerm のフォーカス検出対応）
@@ -83,6 +84,26 @@ YYYYMMDD-HHMMSS-SSID-タイトル.md
 
 - `SSID`: セッション ID の先頭4文字
 - タイトル: 最初のユーザープロンプトの先頭50文字から生成
+
+### claude-code-hooks open
+
+セッションのノートを Obsidian で開く。セッション開始時の自動オープンは既定で無効 (`CLAUDE_OBSIDIAN_AUTO_OPEN` 参照) なので、見たいときにこのコマンドで開く。Advanced URI プラグインがあれば新しいタブで開く。
+
+```bash
+# 現在のセッション（= 最新更新ノート）を開く
+claude-code-hooks open
+
+# 最近のセッションノートを JSON で列挙（既定 20 件）
+claude-code-hooks open --list 20
+
+# セッション ID（完全 / 先頭一致）で開く
+claude-code-hooks open <session-id>
+
+# ノートのパスを直接指定して開く
+claude-code-hooks open path/to/note.md
+```
+
+Claude Code から対話的に開きたい場合は `open-session-note` スキルを使う。
 
 ### claude-code-hooks backfill
 

@@ -5,7 +5,11 @@ _claude_code_hooks() {
 
     case "$prev" in
         claude-code-hooks)
-            COMPREPLY=($(compgen -W "save backfill notify setup completion" -- "$cur"))
+            COMPREPLY=($(compgen -W "save open backfill notify setup completion" -- "$cur"))
+            return
+            ;;
+        open)
+            COMPREPLY=($(compgen -W "--list" -- "$cur"))
             return
             ;;
         backfill)

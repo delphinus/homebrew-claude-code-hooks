@@ -8,6 +8,7 @@ import (
 	"github.com/delphinus/homebrew-claude-code-hooks/internal/completion"
 	"github.com/delphinus/homebrew-claude-code-hooks/internal/hookdata"
 	"github.com/delphinus/homebrew-claude-code-hooks/internal/notify"
+	"github.com/delphinus/homebrew-claude-code-hooks/internal/opencmd"
 	"github.com/delphinus/homebrew-claude-code-hooks/internal/save"
 	"github.com/delphinus/homebrew-claude-code-hooks/internal/setup"
 	"github.com/delphinus/homebrew-claude-code-hooks/internal/tabcolor"
@@ -19,6 +20,8 @@ const usage = `Usage: claude-code-hooks <command> [args]
 
 Commands:
   save              Save Claude Code conversation to Obsidian (reads JSON from stdin)
+  open [ARG]        Open a session note in Obsidian (current session if no ARG;
+                    ARG is a session id, a note path, or --list [N] for JSON)
   backfill [--dry-run]  Backfill related links between session notes
   notify TITLE MSG  Show macOS notification (suppressed if WezTerm pane is focused)
   tabcolor STATE    Set WezTerm tab color for Claude Code state (startup|thinking|idle|waiting|default)
@@ -56,6 +59,9 @@ func main() {
 			os.Exit(1)
 		}
 		err = save.Run(input)
+
+	case "open":
+		err = opencmd.Run(os.Args[2:])
 
 	case "backfill":
 		dryRun := len(os.Args) > 2 && os.Args[2] == "--dry-run"

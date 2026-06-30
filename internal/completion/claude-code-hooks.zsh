@@ -4,6 +4,7 @@ _claude_code_hooks() {
     local -a commands
     commands=(
         'save:Save Claude Code conversation to Obsidian'
+        'open:Open a session note in Obsidian'
         'backfill:Backfill related links between session notes'
         'notify:Show macOS notification'
         'setup:Merge hooks.json into settings.json'
@@ -20,6 +21,9 @@ _claude_code_hooks() {
             ;;
         args)
             case "${words[1]}" in
+                open)
+                    _arguments '--list[List recent session notes as JSON]'
+                    ;;
                 backfill)
                     _arguments '--dry-run[Show what would be changed without modifying files]'
                     ;;
