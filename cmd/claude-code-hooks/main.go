@@ -86,7 +86,16 @@ func main() {
 		err = tabcolor.Run(os.Args[2])
 
 	case "setup":
-		diffMode := len(os.Args) > 2 && os.Args[2] == "--diff"
+		diffMode := false
+		if len(os.Args) > 2 {
+			switch os.Args[2] {
+			case "--diff":
+				diffMode = true
+			default:
+				fmt.Fprintf(os.Stderr, "unknown flag for setup: %s\n\nusage: claude-code-hooks setup [--diff]\n", os.Args[2])
+				os.Exit(1)
+			}
+		}
 		err = setup.Run(diffMode)
 
 	case "_session-end-bg":
