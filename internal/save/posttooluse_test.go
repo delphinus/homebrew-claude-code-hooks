@@ -3,6 +3,7 @@ package save
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -23,6 +24,13 @@ func setupTestDirs(t *testing.T) (vaultDir, cacheDir string) {
 	// Run SessionEnd inline in tests (no background process)
 	sessionEndSync = true
 	t.Cleanup(func() { sessionEndSync = false })
+
+	// Stub the claude CLI call so tests are hermetic: no network, deterministic,
+	// and fast. Default returns "" (equivalent to the CLI being absent, which is
+	// what CI relies on). Individual tests can override claudeGenerate.
+	origClaudeGenerate := claudeGenerate
+	claudeGenerate = func(prompt, content string) string { return "" }
+	t.Cleanup(func() { claudeGenerate = origClaudeGenerate })
 
 	return vaultDir, cacheDir
 }
@@ -459,6 +467,62 @@ func TestPlanMode_RepostOnSessionResume(t *testing.T) {
 	// Verify link to original note was added
 	if !strings.Contains(noteContent, "[!link] Plan from") {
 		t.Errorf("new session note should have a 'Plan from' link to the original note, got:\n%s", noteContent)
+	}
+}
+
+// TestPlanMode_RepostLinkSurvivesRename guards the case where the original
+// session's note is renamed during SessionEnd (a generated title replaces the
+// default project-name title). The "Plan from" link in the resumed session must
+// point at the renamed note and that note must exist.
+func TestPlanMode_RepostLinkSurvivesRename(t *testing.T) {
+	vaultDir, cacheDir := setupTestDirs(t)
+
+	// Force SessionEnd to generate a title so the original note gets renamed.
+	claudeGenerate = func(prompt, content string) string { return "Resumed Work Plan" }
+
+	sessionID := "session-rename-1"
+	cwd := "/tmp/test-project"
+
+	// Session 1: enter plan mode, cache a plan, end the session.
+	if err := Run(&hookdata.HookInput{SessionID: sessionID, HookEventName: "PostToolUse", CWD: cwd, ToolName: "EnterPlanMode"}); err != nil {
+		t.Fatalf("EnterPlanMode failed: %v", err)
+	}
+	if err := Run(&hookdata.HookInput{SessionID: sessionID, HookEventName: "PostToolUse", CWD: cwd, ToolName: "Write", ToolInput: hookdata.ToolInput{
+		FilePath: "/tmp/test-project/.claude/plan.md",
+		Content:  "# My Plan\n\n1. Do thing A\n",
+	}}); err != nil {
+		t.Fatalf("Write failed: %v", err)
+	}
+	if err := Run(&hookdata.HookInput{SessionID: sessionID, HookEventName: "SessionEnd", CWD: cwd}); err != nil {
+		t.Fatalf("SessionEnd failed: %v", err)
+	}
+
+	// plan-last should now reference the renamed note path (which must exist).
+	data, err := os.ReadFile(filepath.Join(cacheDir, "test-project-plan-last"))
+	if err != nil {
+		t.Fatalf("plan-last cache missing: %v", err)
+	}
+	origPath := strings.SplitN(string(data), "\n", 2)[0]
+	if _, err := os.Stat(origPath); err != nil {
+		t.Fatalf("plan-last should point at an existing (renamed) note, got %q: %v", origPath, err)
+	}
+
+	// Session 2: resume in the same project.
+	newSessionID := "session-rename-2"
+	if err := Run(&hookdata.HookInput{SessionID: newSessionID, HookEventName: "UserPromptSubmit", CWD: cwd, Prompt: "continue"}); err != nil {
+		t.Fatalf("UserPromptSubmit failed: %v", err)
+	}
+
+	noteContent := readNoteBySessionID(t, vaultDir, newSessionID)
+
+	// The link target must be present and resolve to an existing note file.
+	m := regexp.MustCompile(`\[!link\] Plan from \[\[([^\]]+)\]\]`).FindStringSubmatch(noteContent)
+	if m == nil {
+		t.Fatalf("resumed note should have a 'Plan from' link, got:\n%s", noteContent)
+	}
+	linkTarget := filepath.Join(filepath.Dir(origPath), m[1]+".md")
+	if _, err := os.Stat(linkTarget); err != nil {
+		t.Errorf("'Plan from' link points at a non-existent note %q: %v", linkTarget, err)
 	}
 }
 

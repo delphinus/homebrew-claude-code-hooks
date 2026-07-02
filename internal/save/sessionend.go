@@ -222,7 +222,10 @@ func summaryTimeLine(start, ended string) string {
 	return fmt.Sprintf("⏱ %s–%s%s (%dh%02dm)", s.Format("15:04"), e.Format("15:04"), cross, h, m)
 }
 
-func claudeGenerate(prompt, content string) string {
+// claudeGenerate runs `claude -p` to generate a summary/title from a conversation
+// log. It is a package var so tests can stub it out (avoiding a real, slow,
+// non-deterministic network call to the claude CLI).
+var claudeGenerate = func(prompt, content string) string {
 	cmd := exec.Command("claude", "-p", "--model", "haiku", "--setting-sources", "")
 	cmd.Stdin = strings.NewReader(content)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
@@ -357,8 +360,31 @@ func renameNote(notePath, prefix, newTitle, vaultDir string) {
 		return
 	}
 
+	// Keep the plan re-post cache pointing at the new path if it referenced this
+	// note. flushCachedPlan runs before the rename and stores the old path, so
+	// without this the "Plan from" link in a resumed session can't be resolved.
+	updatePlanLastPath(notePath, newNotePath)
+
 	// Update references in other files
 	updateReferences(oldBasename, newBasename, newNotePath, vaultDir)
+}
+
+// updatePlanLastPath rewrites the note path recorded in the "<project>-plan-last"
+// re-post cache when a note is renamed, so the original-note link survives.
+func updatePlanLastPath(oldPath, newPath string) {
+	cacheDir := config.CacheDir()
+	project := filepath.Base(filepath.Dir(newPath))
+	planLastPath := filepath.Join(cacheDir, project+"-plan-last")
+
+	data, err := os.ReadFile(planLastPath)
+	if err != nil {
+		return
+	}
+	parts := strings.SplitN(string(data), "\n", 2)
+	if len(parts) < 2 || parts[0] != oldPath {
+		return
+	}
+	_ = os.WriteFile(planLastPath, []byte(newPath+"\n"+parts[1]), 0o644)
 }
 
 func updateReferences(oldName, newName, excludePath, vaultDir string) {
