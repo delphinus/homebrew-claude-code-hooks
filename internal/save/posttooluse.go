@@ -373,7 +373,7 @@ func recordLastAssistantMessage(input *hookdata.HookInput) error {
 	msg = EnsureTableBlankLines(msg)
 
 	ts := time.Now().Format("15:04:05")
-	content := fmt.Sprintf("## Assistant (%s)\n\n%s\n\n", ts, msg)
+	content := fmt.Sprintf("## 🤖 Assistant (%s)\n\n%s\n\n", ts, msg)
 
 	if err := appendToFile(notePath, content); err != nil {
 		return err

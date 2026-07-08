@@ -28,7 +28,24 @@ func handleUserPromptSubmit(input *hookdata.HookInput) error {
 	prompt = EnsureTableBlankLines(prompt)
 
 	ts := time.Now().Format("15:04:05")
-	content := fmt.Sprintf("## User (%s)\n\n%s\n\n", ts, prompt)
+	content := userCallout(ts, prompt)
 
 	return appendToFile(notePath, content)
+}
+
+// userCallout wraps a user prompt in an Obsidian callout so it stands out
+// visually from assistant messages. Every content line is prefixed with "> "
+// (blank lines become ">") to keep the callout continuous.
+func userCallout(ts, prompt string) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "> [!question] User (%s)\n", ts)
+	for _, line := range strings.Split(prompt, "\n") {
+		if line == "" {
+			b.WriteString(">\n")
+		} else {
+			b.WriteString("> " + line + "\n")
+		}
+	}
+	b.WriteString("\n")
+	return b.String()
 }
