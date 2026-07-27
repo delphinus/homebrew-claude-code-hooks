@@ -1,9 +1,9 @@
 class ClaudeCodeHooks < Formula
   desc "Claude Code hooks for Obsidian integration and notifications"
   homepage "https://github.com/delphinus/homebrew-claude-code-hooks"
-  url "https://github.com/delphinus/homebrew-claude-code-hooks/releases/download/v2.33.0/claude-code-hooks.tar.gz"
-  sha256 "0000000000000000000000000000000000000000000000000000000000000000"
-  version "2.33.0"
+  url "https://github.com/delphinus/homebrew-claude-code-hooks/releases/download/v2.34.0/claude-code-hooks.tar.gz"
+  sha256 "2b4823fc7d2624c833f9a18f246f1046303c5c500a7cffd78bde4bc6aced781b"
+  version "2.34.0"
 
   depends_on :macos
 
@@ -18,7 +18,7 @@ class ClaudeCodeHooks < Formula
 
   def post_install
     system "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister",
-           "-R", prefix/"claude-code-hooks-notify.app"
+ "-R", prefix/"claude-code-hooks-notify.app"
   end
 
   def caveats
