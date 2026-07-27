@@ -20,6 +20,8 @@ targets:
     platform: macOS
     sources:
       - Sources/claude-code-hooks-notify
+      - path: AppIcon.icns
+        buildPhase: resources
     dependencies:
       - target: ClaudeNotifyLib
     settings:

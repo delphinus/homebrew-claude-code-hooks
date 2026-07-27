@@ -63,6 +63,8 @@ Temporary Items
 /pkg/
 notifier/.build/
 notifier/*.xcodeproj/
+notifier/AppIcon.iconset/
+notifier/AppIcon.icns
 
 # Claude Code
 .claude/

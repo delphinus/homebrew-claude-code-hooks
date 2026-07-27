@@ -8,9 +8,13 @@ NOTIFIER_DERIVED := $(NOTIFIER_DIR)/.build/DerivedData
 PKG := pkg/claude-code-hooks
 GO_LDFLAGS := -s -w -X main.version=$(VERSION)
 
-.PHONY: all build-go build-notifier build-universal package test test-go test-notifier clean
+.PHONY: all icon build-go build-notifier build-universal package test test-go test-notifier clean
 
 all: build-universal
+
+# App icon: draw an iconset and compile it to AppIcon.icns.
+icon:
+	cd $(NOTIFIER_DIR) && swift generate_icon.swift && iconutil -c icns AppIcon.iconset -o AppIcon.icns
 
 # Universal (arm64 + x86_64) Go binary.
 build-go:
@@ -20,7 +24,7 @@ build-go:
 	lipo -create -output $(BINARY) dist/$(BINARY)_arm64 dist/$(BINARY)_amd64
 
 # Universal notifier .app via xcodegen + xcodebuild.
-build-notifier:
+build-notifier: icon
 	cd $(NOTIFIER_DIR) && xcodegen generate
 	xcodebuild -project $(NOTIFIER_PROJECT) -scheme claude-code-hooks-notify \
 		-configuration Release -derivedDataPath $(NOTIFIER_DERIVED) \
@@ -45,4 +49,5 @@ test-notifier:
 	cd $(NOTIFIER_DIR) && swift run claude-code-hooks-notify-tests
 
 clean:
-	rm -rf $(BINARY) $(APP) pkg dist $(NOTIFIER_DIR)/.build $(NOTIFIER_DIR)/*.xcodeproj
+	rm -rf $(BINARY) $(APP) pkg dist $(NOTIFIER_DIR)/.build $(NOTIFIER_DIR)/*.xcodeproj \
+		$(NOTIFIER_DIR)/AppIcon.iconset $(NOTIFIER_DIR)/AppIcon.icns

@@ -1,5 +1,7 @@
 # claude-code-hooks
 
+<img src="docs/icon.png" alt="claude-code-hooks-notify のアイコン" width="120" align="right">
+
 Claude Code での会話やツール操作を Obsidian ノートに自動記録するための Go バイナリ。6つのサブコマンドで構成される。
 
 - **`claude-code-hooks save`** — Claude Code のフックから呼び出され、イベントをノートに追記する
