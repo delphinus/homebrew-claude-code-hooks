@@ -1,0 +1,43 @@
+name: claude-code-hooks-notify
+
+options:
+  deploymentTarget:
+    macOS: "13.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "5"
+
+targets:
+  ClaudeNotifyLib:
+    type: library.static
+    platform: macOS
+    sources:
+      - Sources/ClaudeNotifyLib
+
+  claude-code-hooks-notify:
+    type: application
+    platform: macOS
+    sources:
+      - Sources/claude-code-hooks-notify
+    dependencies:
+      - target: ClaudeNotifyLib
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.delphinus.claude-code-hooks-notify
+        INFOPLIST_FILE: Info.plist
+        GENERATE_INFOPLIST_FILE: false
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+
+  claude-code-hooks-notify-tests:
+    type: tool
+    platform: macOS
+    sources:
+      - Sources/claude-code-hooks-notify-tests
+    dependencies:
+      - target: ClaudeNotifyLib
+    settings:
+      base:
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual

@@ -8,8 +8,18 @@ import (
 	"strings"
 )
 
+// helperBinary is the native (.app) helper installed alongside this binary. It
+// posts a *clickable* macOS notification: clicking it (or opening the
+// claude-code-hooks://activate?pane=N URL) focuses the originating WezTerm pane.
+const helperBinary = "claude-code-hooks-notify"
+
 // Run executes the notify subcommand.
 // It shows a macOS notification, suppressing it if the current WezTerm pane is focused.
+//
+// When running inside WezTerm and the native helper is installed, the helper is
+// used so the notification becomes clickable (click -> activate this pane). In
+// every other case (helper missing, not in WezTerm, or the helper fails) it
+// falls back to a plain osascript notification, so a notification is always shown.
 func Run(title, message string) error {
 	// Check if running in WezTerm
 	weztermPane := os.Getenv("WEZTERM_PANE")
@@ -17,9 +27,30 @@ func Run(title, message string) error {
 		if shouldSuppress(weztermPane) {
 			return nil
 		}
+
+		if path, err := exec.LookPath(helperBinary); err == nil {
+			if err := runHelper(path, title, message, weztermPane); err == nil {
+				return nil
+			}
+			// fall through to osascript on failure
+		}
 	}
 
-	// Display notification via osascript
+	return osascriptNotify(title, message)
+}
+
+// helperArgs builds the argument list for the native notifier helper.
+// WEZTERM_UNIX_SOCKET is passed via the inherited environment, not here.
+func helperArgs(title, message, pane string) []string {
+	return []string{"post", "--title", title, "--message", message, "--pane", pane}
+}
+
+func runHelper(path, title, message, pane string) error {
+	cmd := exec.Command(path, helperArgs(title, message, pane)...)
+	return cmd.Run()
+}
+
+func osascriptNotify(title, message string) error {
 	script := fmt.Sprintf(
 		`display notification %q with title %q sound name "default"`,
 		message, title,

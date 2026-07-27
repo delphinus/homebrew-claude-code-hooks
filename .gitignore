@@ -58,5 +58,11 @@ Temporary Items
 /claude-code-hooks
 /dist/
 
+# Notifier .app build artifacts
+/claude-code-hooks-notify.app/
+/pkg/
+notifier/.build/
+notifier/*.xcodeproj/
+
 # Claude Code
 .claude/

@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
         with:
@@ -21,45 +21,62 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v7
-        with:
-          args: release --clean
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install XcodeGen
+        run: brew install xcodegen
 
       - name: Extract version from tag
         id: version
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
+      - name: Test
+        run: make test
+
+      - name: Build universal
+        run: make build-universal VERSION="${{ steps.version.outputs.version }}"
+
+      - name: Verify universal binaries
+        run: |
+          lipo -info claude-code-hooks
+          lipo -info claude-code-hooks-notify.app/Contents/MacOS/claude-code-hooks-notify
+
+      - name: Archive
+        run: tar czf claude-code-hooks.tar.gz -C pkg claude-code-hooks
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" --generate-notes claude-code-hooks.tar.gz
+
       - name: Update Formula
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           REPO="https://github.com/${{ github.repository }}"
-
-          ARM64_SHA=$(grep "claude-code-hooks_darwin_arm64.tar.gz" dist/checksums.txt | awk '{print $1}')
-          AMD64_SHA=$(grep "claude-code-hooks_darwin_amd64.tar.gz" dist/checksums.txt | awk '{print $1}')
+          TARBALL_URL="${REPO}/releases/download/v${VERSION}/claude-code-hooks.tar.gz"
+          SHA256=$(shasum -a 256 claude-code-hooks.tar.gz | awk '{print $1}')
 
           cat > Formula/claude-code-hooks.rb << FORMULA_EOF
           class ClaudeCodeHooks < Formula
             desc "Claude Code hooks for Obsidian integration and notifications"
             homepage "${REPO}"
+            url "${TARBALL_URL}"
+            sha256 "${SHA256}"
             version "${VERSION}"
 
-            on_arm do
-              url "${REPO}/releases/download/v${VERSION}/claude-code-hooks_darwin_arm64.tar.gz"
-              sha256 "${ARM64_SHA}"
-            end
-            on_intel do
-              url "${REPO}/releases/download/v${VERSION}/claude-code-hooks_darwin_amd64.tar.gz"
-              sha256 "${AMD64_SHA}"
-            end
+            depends_on :macos
 
             def install
               bin.install "claude-code-hooks"
+              prefix.install "claude-code-hooks-notify.app"
+              bin.write_exec_script prefix/"claude-code-hooks-notify.app/Contents/MacOS/claude-code-hooks-notify"
               (share/"claude-code-hooks").install "share/hooks.json"
 
               generate_completions_from_executable(bin/"claude-code-hooks", "completion", shells: [:bash, :zsh, :fish])
+            end
+
+            def post_install
+              system "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister",
+                     "-R", prefix/"claude-code-hooks-notify.app"
             end
 
             def caveats
@@ -74,6 +91,10 @@ jobs:
 
                 シェル補完は自動的にインストールされています（Bash / Zsh / Fish）。
 
+                通知をクリックすると、その Claude Code が動いている WezTerm のペインが前面化します。
+                初回の通知時に通知の許可を求められるので許可してください
+                （システム設定 > 通知 > claude-code-hooks-notify）。
+
                 [推奨] Obsidian の Advanced URI プラグインを導入すると、
                 ノートが新しいタブで開くようになります:
                   https://github.com/Vinzent03/obsidian-advanced-uri
@@ -82,7 +103,7 @@ jobs:
           end
           FORMULA_EOF
 
-          sed -i 's/^          //' Formula/claude-code-hooks.rb
+          sed -i '' 's/^          //' Formula/claude-code-hooks.rb
 
       - name: Commit and push Formula update
         run: |

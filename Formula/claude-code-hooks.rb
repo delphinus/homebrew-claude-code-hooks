@@ -1,22 +1,24 @@
 class ClaudeCodeHooks < Formula
   desc "Claude Code hooks for Obsidian integration and notifications"
   homepage "https://github.com/delphinus/homebrew-claude-code-hooks"
+  url "https://github.com/delphinus/homebrew-claude-code-hooks/releases/download/v2.33.0/claude-code-hooks.tar.gz"
+  sha256 "0000000000000000000000000000000000000000000000000000000000000000"
   version "2.33.0"
 
-  on_arm do
-    url "https://github.com/delphinus/homebrew-claude-code-hooks/releases/download/v2.33.0/claude-code-hooks_darwin_arm64.tar.gz"
-    sha256 "fee1d196609d9a0878a4e8dad9bda84cb2d6c10e046802e693de6e2f9efb24ea"
-  end
-  on_intel do
-    url "https://github.com/delphinus/homebrew-claude-code-hooks/releases/download/v2.33.0/claude-code-hooks_darwin_amd64.tar.gz"
-    sha256 "0c92e22ed965fad14d98b39547c40f7b5d0df42f96e97819cabda981b8be62c7"
-  end
+  depends_on :macos
 
   def install
     bin.install "claude-code-hooks"
+    prefix.install "claude-code-hooks-notify.app"
+    bin.write_exec_script prefix/"claude-code-hooks-notify.app/Contents/MacOS/claude-code-hooks-notify"
     (share/"claude-code-hooks").install "share/hooks.json"
 
     generate_completions_from_executable(bin/"claude-code-hooks", "completion", shells: [:bash, :zsh, :fish])
+  end
+
+  def post_install
+    system "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister",
+           "-R", prefix/"claude-code-hooks-notify.app"
   end
 
   def caveats
@@ -30,6 +32,10 @@ class ClaudeCodeHooks < Formula
         claude-code-hooks setup --diff
 
       シェル補完は自動的にインストールされています（Bash / Zsh / Fish）。
+
+      通知をクリックすると、その Claude Code が動いている WezTerm のペインが前面化します。
+      初回の通知時に通知の許可を求められるので許可してください
+      （システム設定 > 通知 > claude-code-hooks-notify）。
 
       [推奨] Obsidian の Advanced URI プラグインを導入すると、
       ノートが新しいタブで開くようになります:

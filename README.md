@@ -6,7 +6,7 @@ Claude Code での会話やツール操作を Obsidian ノートに自動記録�
 - **`claude-code-hooks open`** — セッションのノートを Obsidian で開く（引数なしで現在のセッション）
 - **`claude-code-hooks backfill`** — 既存ノートに session リンクをバックフィルする
 - **`claude-code-hooks setup`** — フック設定を `~/.claude/settings.json` に適用する
-- **`claude-code-hooks notify`** — macOS 通知を表示するヘルパー（WezTerm のフォーカス検出対応）
+- **`claude-code-hooks notify`** — macOS 通知を表示するヘルパー（クリックで WezTerm のペインを前面化。WezTerm のフォーカス検出対応）
 - **`claude-code-hooks tabcolor`** — Claude Code の状態に応じて WezTerm のタブ色を変える
 - **`claude-code-hooks completion`** — シェル補完スクリプトを出力する（Bash / Zsh / Fish 対応）
 
@@ -137,6 +137,19 @@ macOS の通知を表示する。WezTerm 使用時は、現在のペインがフ
 ```bash
 claude-code-hooks notify 'タイトル' 'メッセージ'
 ```
+
+WezTerm 内で実行され、かつネイティブヘルパー `claude-code-hooks-notify` が入っている場合は、**クリックすると通知元の WezTerm ペイン（＝そのタブ・ウィンドウ）が前面化する**クリック可能な通知を出す。ヘルパーが無い環境や WezTerm 外では、従来どおり `osascript` によるプレーンな通知にフォールバックする（通知自体は必ず出る）。
+
+- 初回の通知時に通知の許可を求められる。許可するまで通知は出ない（システム設定 > 通知 > claude-code-hooks-notify）。
+- クリック挙動は URL スキームでも叩ける（動作確認用）:
+
+  ```bash
+  open "claude-code-hooks://activate?pane=<WEZTERM_PANE>&sock=<WEZTERM_UNIX_SOCKET>"
+  ```
+
+#### 仕組み
+
+macOS の `osascript` の `display notification` はクリック時に任意のアクションを実行できない。そこでクリック可能な通知は、`UserNotifications`（`UNUserNotificationCenter`）を使う署名済みの `.app`（`claude-code-hooks-notify`、Formula が Go バイナリと一緒に配置する）が担う。通知にはペイン ID (`$WEZTERM_PANE`) と mux ソケット (`$WEZTERM_UNIX_SOCKET`) を `userInfo` として載せ、クリック時にそれを読んで `wezterm cli activate-pane --pane-id <N>` → `open -a WezTerm` を実行する。ヘルパープロセスが終了した後にクリックされても、LaunchServices がバンドルを再起動して処理するため、フックのプロセスを生かし続ける必要はない。
 
 ### claude-code-hooks tabcolor
 
