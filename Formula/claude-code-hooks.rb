@@ -1,9 +1,9 @@
 class ClaudeCodeHooks < Formula
   desc "Claude Code hooks for Obsidian integration and notifications"
   homepage "https://github.com/delphinus/homebrew-claude-code-hooks"
-  url "https://github.com/delphinus/homebrew-claude-code-hooks/releases/download/v2.34.1/claude-code-hooks.tar.gz"
-  sha256 "f74054f0389fd853af353b867cf8be50c5c4516a8b849718f018386fe1ac8409"
-  version "2.34.1"
+  url "https://github.com/delphinus/homebrew-claude-code-hooks/releases/download/v2.35.0/claude-code-hooks.tar.gz"
+  sha256 "dcb0c7503f5158a0ed147df5d1eeebcac4a67f8a36c0b07fb9e69ee13e1b47e9"
+  version "2.35.0"
 
   depends_on :macos
 
