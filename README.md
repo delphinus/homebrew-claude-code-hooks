@@ -142,6 +142,8 @@ claude-code-hooks notify 'タイトル' 'メッセージ'
 
 WezTerm 内で実行され、かつネイティブヘルパー `claude-code-hooks-notify` が入っている場合は、**クリックすると通知元の WezTerm ペイン（＝そのタブ・ウィンドウ）が前面化する**クリック可能な通知を出す。ヘルパーが無い環境や WezTerm 外では、従来どおり `osascript` によるプレーンな通知にフォールバックする（通知自体は必ず出る）。
 
+WezTerm 内では、通知のサブタイトルに**通知元のタブ**を `<タブ番号>: <タブタイトル>` の形式で載せる（例: `4: ⠂ 通知にタブ番号とタイトルを表示`）。タブ番号・タイトルはタブバーの表示に合わせてあるので、複数タブで Claude Code を走らせていてもどのセッションからの通知か一目で分かる。タイトルが 40 文字を超える場合は末尾を `…` で省略する。
+
 - 初回の通知時に通知の許可を求められる。許可するまで通知は出ない（システム設定 > 通知 > claude-code-hooks-notify）。
 - クリック挙動は URL スキームでも叩ける（動作確認用）:
 
@@ -152,6 +154,8 @@ WezTerm 内で実行され、かつネイティブヘルパー `claude-code-hook
 #### 仕組み
 
 macOS の `osascript` の `display notification` はクリック時に任意のアクションを実行できない。そこでクリック可能な通知は、`UserNotifications`（`UNUserNotificationCenter`）を使う署名済みの `.app`（`claude-code-hooks-notify`、Formula が Go バイナリと一緒に配置する）が担う。通知にはペイン ID (`$WEZTERM_PANE`) と mux ソケット (`$WEZTERM_UNIX_SOCKET`) を `userInfo` として載せ、クリック時にそれを読んで `wezterm cli activate-pane --pane-id <N>` → `open -a WezTerm` を実行する。ヘルパープロセスが終了した後にクリックされても、LaunchServices がバンドルを再起動して処理するため、フックのプロセスを生かし続ける必要はない。
+
+サブタイトルのタブ情報は `wezterm cli list --format json` から組み立てる。WezTerm の CLI はタブ番号を返さないため、番号は同じウィンドウ内でタブが現れる順序（タブバーの並び順）から導出する。タイトルは WezTerm 側の `format-tab-title` と同じ規則で、明示的な `tab_title` があればそれを、無ければタブ内のペインタイトルを重複を除いて `|` で連結したものを使う。解決に失敗した場合はサブタイトルを付けずに通知する。
 
 ### claude-code-hooks tabcolor
 

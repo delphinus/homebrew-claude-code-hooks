@@ -16,6 +16,9 @@ const helperBinary = "claude-code-hooks-notify"
 // Run executes the notify subcommand.
 // It shows a macOS notification, suppressing it if the current WezTerm pane is focused.
 //
+// Inside WezTerm the notification carries a subtitle with the originating tab
+// ("<タブ番号>: <タブタイトル>") so it is obvious which session it came from.
+//
 // When running inside WezTerm and the native helper is installed, the helper is
 // used so the notification becomes clickable (click -> activate this pane). In
 // every other case (helper missing, not in WezTerm, or the helper fails) it
@@ -23,38 +26,52 @@ const helperBinary = "claude-code-hooks-notify"
 func Run(title, message string) error {
 	// Check if running in WezTerm
 	weztermPane := os.Getenv("WEZTERM_PANE")
+	subtitle := ""
 	if weztermPane != "" {
 		if shouldSuppress(weztermPane) {
 			return nil
 		}
 
+		subtitle = tabLabel(weztermPane)
+
 		if path, err := exec.LookPath(helperBinary); err == nil {
-			if err := runHelper(path, title, message, weztermPane); err == nil {
+			if err := runHelper(path, title, subtitle, message, weztermPane); err == nil {
 				return nil
 			}
 			// fall through to osascript on failure
 		}
 	}
 
-	return osascriptNotify(title, message)
+	return osascriptNotify(title, subtitle, message)
 }
 
 // helperArgs builds the argument list for the native notifier helper.
+// An empty subtitle is omitted entirely (older helpers ignore unknown flags).
 // WEZTERM_UNIX_SOCKET is passed via the inherited environment, not here.
-func helperArgs(title, message, pane string) []string {
-	return []string{"post", "--title", title, "--message", message, "--pane", pane}
+func helperArgs(title, subtitle, message, pane string) []string {
+	args := []string{"post", "--title", title}
+	if subtitle != "" {
+		args = append(args, "--subtitle", subtitle)
+	}
+	return append(args, "--message", message, "--pane", pane)
 }
 
-func runHelper(path, title, message, pane string) error {
-	cmd := exec.Command(path, helperArgs(title, message, pane)...)
+func runHelper(path, title, subtitle, message, pane string) error {
+	cmd := exec.Command(path, helperArgs(title, subtitle, message, pane)...)
 	return cmd.Run()
 }
 
-func osascriptNotify(title, message string) error {
+func osascriptNotify(title, subtitle, message string) error {
 	script := fmt.Sprintf(
 		`display notification %q with title %q sound name "default"`,
 		message, title,
 	)
+	if subtitle != "" {
+		script = fmt.Sprintf(
+			`display notification %q with title %q subtitle %q sound name "default"`,
+			message, title, subtitle,
+		)
+	}
 	cmd := exec.Command("osascript", "-e", script)
 	return cmd.Run()
 }
