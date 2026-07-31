@@ -6,6 +6,7 @@ import (
 
 	"github.com/delphinus/homebrew-claude-code-hooks/internal/backfill"
 	"github.com/delphinus/homebrew-claude-code-hooks/internal/completion"
+	"github.com/delphinus/homebrew-claude-code-hooks/internal/ghguard"
 	"github.com/delphinus/homebrew-claude-code-hooks/internal/hookdata"
 	"github.com/delphinus/homebrew-claude-code-hooks/internal/notify"
 	"github.com/delphinus/homebrew-claude-code-hooks/internal/opencmd"
@@ -25,6 +26,7 @@ Commands:
   backfill [--dry-run]  Backfill related links between session notes
   notify TITLE MSG  Show macOS notification (suppressed if WezTerm pane is focused)
   tabcolor STATE    Set WezTerm tab color for Claude Code state (startup|thinking|idle|waiting|default)
+  gh-guard          Ask before a gh command writes to a guarded host (PreToolUse hook, reads JSON from stdin)
   setup [--diff]    Merge hooks.json into ~/.claude/settings.json
   completion SHELL  Output shell completion script (bash, zsh, fish)
 
@@ -84,6 +86,14 @@ func main() {
 			os.Exit(1)
 		}
 		err = tabcolor.Run(os.Args[2])
+
+	case "gh-guard":
+		input, e := hookdata.ReadFromStdin()
+		if e != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", e)
+			os.Exit(1)
+		}
+		err = ghguard.Run(input)
 
 	case "setup":
 		diffMode := false

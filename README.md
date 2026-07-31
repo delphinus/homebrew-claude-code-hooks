@@ -2,7 +2,7 @@
 
 <img src="docs/icon.png" alt="claude-code-hooks-notify のアイコン" width="120" align="right">
 
-Claude Code での会話やツール操作を Obsidian ノートに自動記録するための Go バイナリ。6つのサブコマンドで構成される。
+Claude Code での会話やツール操作を Obsidian ノートに自動記録するための Go バイナリ。8つのサブコマンドで構成される。
 
 - **`claude-code-hooks save`** — Claude Code のフックから呼び出され、イベントをノートに追記する
 - **`claude-code-hooks open`** — セッションのノートを Obsidian で開く（引数なしで現在のセッション）
@@ -10,6 +10,7 @@ Claude Code での会話やツール操作を Obsidian ノートに自動記録�
 - **`claude-code-hooks setup`** — フック設定を `~/.claude/settings.json` に適用する
 - **`claude-code-hooks notify`** — macOS 通知を表示するヘルパー（クリックで WezTerm のペインを前面化。WezTerm のフォーカス検出対応）
 - **`claude-code-hooks tabcolor`** — Claude Code の状態に応じて WezTerm のタブ色を変える
+- **`claude-code-hooks gh-guard`** — `gh` が保護対象ホストに書き込む前に確認プロンプトを強制する
 - **`claude-code-hooks completion`** — シェル補完スクリプトを出力する（Bash / Zsh / Fish 対応）
 
 ## インストール
@@ -222,6 +223,52 @@ wezterm.on("format-tab-title", function(tab, tabs, panes, config, hover, max_wid
 end)
 ```
 
+### claude-code-hooks gh-guard
+
+PreToolUse フックとして Bash コマンドを検査し、`gh` が保護対象ホスト（既定は `github.com`）へ書き込もうとしているときだけ確認プロンプトを強制する。それ以外のときは何も出力せず、通常のパーミッション判定に委ねる。
+
+Claude Code の auto mode はクラシファイアがツール呼び出しを黙って承認する。ローカルの作業ならそれでよいが、issue へのコメントや PR の作成は外向きの操作で、実行した瞬間に公開される。フックが返す `"ask"` は auto mode でも必ずプロンプトを出す（クラシファイアは deny はできるが、確認無しで通すことはできない）ので、この 1 点だけを人間の判断に戻すために使う。
+
+社内の GitHub Enterprise など保護対象外のホストへの書き込みは素通りするため、日常の作業は中断されない。
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(gh *)",
+            "command": "claude-code-hooks gh-guard"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+#### 書き込みの判定
+
+- `pr view` / `issue list` / `repo clone` のような読み取り専用のサブコマンドは通す
+- `gh api` は `--method` が GET 以外、または `-f` / `-F` / `--input` でフィールドを渡している場合を書き込みとみなす
+- `gh auth` / `gh config` / `gh browse` などリモートを変更しないコマンドは通す
+- **表に無いサブコマンドは書き込み扱い**。gh 側にコマンドが増えたときに黙って素通りするより、確認が出るほうを既定にしている
+- `a && gh ...` のようなコマンド連鎖や `$(gh ...)` のコマンド置換も検査する
+
+#### ホストの判定
+
+以下の順で最初に見つかったものを使う。gh 自身の解決順に合わせてある。
+
+1. `--hostname`
+2. コマンド行の `GH_HOST=` 代入
+3. `--repo` に含まれるホスト（`HOST/OWNER/REPO` または URL 形式）
+4. 環境変数 `GH_HOST`
+5. 実行ディレクトリの `origin` リモート
+6. 上のいずれも無ければ `github.com`
+
 ### claude-code-hooks completion
 
 シェル補完スクリプトを出力する。Bash、Zsh、Fish に対応。
@@ -247,6 +294,7 @@ claude-code-hooks completion fish | source
 |---|---|
 | `CLAUDE_OBSIDIAN_VAULT` | Obsidian vault パスの上書き（デフォルト: iCloud 上の `Notes/Claude Code`） |
 | `CLAUDE_OBSIDIAN_AUTO_OPEN` | セッション開始時にノートを Obsidian で自動で開く（既定は開かない。値が空でなければ有効化） |
+| `CLAUDE_GH_GUARD_HOSTS` | `gh-guard` が保護するホストをカンマ区切りで指定（既定: `github.com`） |
 
 ## 前提条件
 
