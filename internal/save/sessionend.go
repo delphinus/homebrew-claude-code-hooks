@@ -92,7 +92,7 @@ func RunSessionEndBG(sessionID string) {
 		}
 
 		// Record the session end time (= last activity) into frontmatter.
-		// "ended" is the last `## Assistant (HH:MM:SS)` timestamp, which tracks
+		// "ended" is the last `## 🤖 Assistant (HH:MM:SS)` timestamp, which tracks
 		// real work end without the idle inflation of the actual quit time.
 		start := ""
 		if fm, _, perr := frontmatter.Parse(noteContent); perr == nil {
@@ -154,9 +154,11 @@ func readHead(path string, maxBytes int) (string, error) {
 	return string(buf[:n]), nil
 }
 
-var assistantTSRe = regexp.MustCompile(`(?m)^## Assistant \((\d{2}):(\d{2}):(\d{2})\)`)
+// Headings are written as "## 🤖 Assistant (HH:MM:SS)"; the emoji is optional
+// here so notes written before it was added still match.
+var assistantTSRe = regexp.MustCompile(`(?m)^## (?:🤖 )?Assistant \((\d{2}):(\d{2}):(\d{2})\)`)
 
-// lastActivityTime returns the timestamp of the last "## Assistant (HH:MM:SS)"
+// lastActivityTime returns the timestamp of the last "## 🤖 Assistant (HH:MM:SS)"
 // heading in the note, combined with the date from dateStr (frontmatter "date",
 // formatted "2006-01-02T15:04:05"). This is the last real activity, used as the
 // session end time (no idle inflation). If the last activity's clock time is
