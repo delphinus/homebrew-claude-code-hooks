@@ -336,14 +336,32 @@ func handleEditWrite(input *hookdata.HookInput) error {
 	return appendToFile(notePath, fmt.Sprintf("> [!file] %s: %s (%s)\n\n", input.ToolName, displayPath, ts))
 }
 
+// appendToFile appends content to path. A write that fails is kept in the local
+// spool instead of being dropped, and is flushed by the next append that
+// succeeds; see spool.go for why. Spooling counts as success, so the caller
+// still records the content as written and will not queue it twice.
 func appendToFile(path, content string) error {
+	content = readSpool(path) + content
+	n, err := rawAppend(path, content)
+	if err != nil {
+		if serr := writeSpool(path, content[n:]); serr != nil {
+			return err
+		}
+		return nil
+	}
+	clearSpool(path)
+	return nil
+}
+
+// rawAppend appends content to path, reporting how many bytes made it so a
+// partial write is not spooled a second time.
+func rawAppend(path, content string) (int, error) {
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0o644)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer f.Close()
-	_, err = f.WriteString(content)
-	return err
+	return f.WriteString(content)
 }
 
 // recordLastAssistantMessage records the last assistant message if it hasn't been recorded yet.

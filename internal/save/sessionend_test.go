@@ -69,6 +69,19 @@ func TestLastActivityTime(t *testing.T) {
 	}
 }
 
+// The headings actually written by handleStop / recordLastAssistantMessage
+// carry the 🤖 emoji, so that is the form that has to match.
+func TestLastActivityTime_EmojiHeading(t *testing.T) {
+	dir := t.TempDir()
+	notePath := filepath.Join(dir, "n.md")
+	content := "---\nid: x\ndate: 2026-06-29T11:28:00\n---\n\n## 🤖 Assistant (11:30:00)\n\nhi\n\n## 🤖 Assistant (18:02:33)\n\nbye\n"
+	os.WriteFile(notePath, []byte(content), 0o644)
+
+	if got := lastActivityTime(notePath, "2026-06-29T11:28:00"); got != "2026-06-29T18:02:33" {
+		t.Errorf("got %q, want %q", got, "2026-06-29T18:02:33")
+	}
+}
+
 func TestLastActivityTime_CrossMidnight(t *testing.T) {
 	dir := t.TempDir()
 	notePath := filepath.Join(dir, "n.md")
