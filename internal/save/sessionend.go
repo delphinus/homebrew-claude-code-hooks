@@ -82,6 +82,9 @@ func RunSessionEndBG(sessionID string) {
 		}
 
 		flushCachedPlan(sessionID, notePath)
+		// Land anything a failed append left in the spool before the note is
+		// read and rewritten below, so it does not end up after the summary.
+		flushPendingAppends(notePath)
 
 		noteContent, err := readHead(notePath, 100000)
 		if err != nil {
