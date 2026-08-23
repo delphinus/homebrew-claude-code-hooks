@@ -6,13 +6,14 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 )
 
 // userVarName is the WezTerm user var that holds the current Claude Code state.
 // The wezterm.lua side scans each tab's panes for this user var to color the tab.
 const userVarName = "claude_state"
 
-// validStates is the whitelist of states that map to tab colors on the WezTerm side.
+// validStates is the whitelist of states that map to tab colors.
 // "default" clears the coloring (back to the normal tab color).
 var validStates = map[string]bool{
 	"startup":  true,
@@ -22,28 +23,100 @@ var validStates = map[string]bool{
 	"default":  true,
 }
 
-// Run sets the WezTerm user var claude_state for the current pane, so the tab can
-// be colored according to the Claude Code state.
+// Run colors the current tab according to the Claude Code state.
 //
-// WezTerm has no CLI to set a user var; the only mechanism is the OSC 1337
-// SetUserVar escape sequence written to the pane's terminal. A hook's stdout is
-// captured by Claude Code (and /dev/tty is unavailable), so when stdout is not a
-// terminal we resolve the pane's tty device via `wezterm cli list` (keyed by
-// WEZTERM_PANE) and write the sequence there. The user var then syncs across the
-// mux to the GUI client, where format-tab-title reads it.
+// Two terminals are supported and probed in this order:
 //
-// It is a no-op outside WezTerm. Since this is purely cosmetic, all failures are
-// swallowed so the hook never disrupts the Claude Code flow.
+//   - kitty: `kitten @ set-tab-color` sets the tab colors directly, so nothing
+//     needs to be written to the pane's terminal at all.
+//   - WezTerm: there is no CLI to set a user var, so the OSC 1337 SetUserVar
+//     escape sequence has to be written to the pane's terminal, and the
+//     wezterm.lua side turns that into a color.
+//
+// It is a no-op under any other terminal. Since this is purely cosmetic, all
+// failures are swallowed so the hook never disrupts the Claude Code flow.
 func Run(state string) error {
 	if !validStates[state] {
 		return fmt.Errorf("unknown state: %q", state)
 	}
+	if window := os.Getenv("KITTY_WINDOW_ID"); window != "" {
+		return runKitty(state, window)
+	}
+	if pane := os.Getenv("WEZTERM_PANE"); pane != "" {
+		return runWezTerm(state, pane)
+	}
+	return nil
+}
 
-	pane := os.Getenv("WEZTERM_PANE")
-	if pane == "" {
+//: kitty
+
+// tabColors holds the four colors kitty needs per state. They reproduce what
+// wezterm.lua's tab_title.lua computed at render time:
+//
+//	active   = the state color as-is
+//	inactive = the same color darkened by 25% (wezterm's Color:darken(0.25),
+//	           which is lighten(-0.25), i.e. HSL lightness * 0.75)
+//	fg       = #1a1b26 when the resulting lightness is > 0.4, else #c0caf5
+//
+// Every state stays above that threshold even after darkening, so the light
+// foreground never comes up in practice; it is left out rather than carried
+// over as dead configuration.
+type tabColors struct{ activeBG, inactiveBG string }
+
+const tabFG = "#1a1b26"
+
+var stateColors = map[string]tabColors{
+	"startup":  {"#7dcfff", "#1eacff"},
+	"thinking": {"#bb9af7", "#7c3df0"},
+	"idle":     {"#9ece6a", "#77b03a"},
+	"waiting":  {"#e0af68", "#cc8a2a"},
+}
+
+func runKitty(state, window string) error {
+	kitten := kittenPath()
+	if kitten == "" {
 		return nil
 	}
+	// Match the tab *containing* this window. The hook runs as a descendant of
+	// the Claude Code window, so KITTY_WINDOW_ID identifies it, and
+	// KITTY_LISTEN_ON (also inherited) tells kitten which instance to talk to.
+	args := []string{"@", "set-tab-color", "--match", "window_id:" + window}
+	if c, ok := stateColors[state]; ok {
+		args = append(args,
+			"active_bg="+c.activeBG, "active_fg="+tabFG,
+			"inactive_bg="+c.inactiveBG, "inactive_fg="+tabFG,
+		)
+	} else {
+		// "default": revert to the colors from kitty.conf.
+		args = append(args,
+			"active_bg=NONE", "active_fg=NONE",
+			"inactive_bg=NONE", "inactive_fg=NONE",
+		)
+	}
+	_ = exec.Command(kitten, args...).Run()
+	return nil
+}
 
+// kittenPath locates the kitten binary. A hook may be launched with a minimal
+// PATH, so fall back to the app bundle before giving up.
+func kittenPath() string {
+	if p, err := exec.LookPath("kitten"); err == nil {
+		return p
+	}
+	for _, p := range []string{
+		"/Applications/kitty.app/Contents/MacOS/kitten",
+		filepath.Join(os.Getenv("HOME"), "Applications/kitty.app/Contents/MacOS/kitten"),
+	} {
+		if fi, err := os.Stat(p); err == nil && !fi.IsDir() {
+			return p
+		}
+	}
+	return ""
+}
+
+//: WezTerm
+
+func runWezTerm(state, pane string) error {
 	seq := fmt.Sprintf(
 		"\x1b]1337;SetUserVar=%s=%s\a",
 		userVarName,
@@ -56,7 +129,9 @@ func Run(state string) error {
 		return nil
 	}
 
-	// Hook invocation: stdout is captured. Resolve the pane's tty and write there.
+	// Hook invocation: stdout is captured by Claude Code (and /dev/tty is
+	// unavailable). Resolve the pane's tty and write there instead. The user var
+	// then syncs across the mux to the GUI client, where format-tab-title reads it.
 	tty := paneTTY(pane)
 	if tty == "" {
 		return nil

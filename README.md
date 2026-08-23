@@ -9,7 +9,7 @@ Claude Code での会話やツール操作を Obsidian ノートに自動記録�
 - **`claude-code-hooks backfill`** — 既存ノートに session リンクをバックフィルする
 - **`claude-code-hooks setup`** — フック設定を `~/.claude/settings.json` に適用する
 - **`claude-code-hooks notify`** — macOS 通知を表示するヘルパー（クリックで WezTerm のペインを前面化。WezTerm のフォーカス検出対応）
-- **`claude-code-hooks tabcolor`** — Claude Code の状態に応じて WezTerm のタブ色を変える
+- **`claude-code-hooks tabcolor`** — Claude Code の状態に応じてタブ色を変える（kitty / WezTerm 対応）
 - **`claude-code-hooks gh-guard`** — `gh` が保護対象ホストに書き込む前に確認プロンプトを強制する
 - **`claude-code-hooks completion`** — シェル補完スクリプトを出力する（Bash / Zsh / Fish 対応）
 
@@ -160,34 +160,54 @@ macOS の `osascript` の `display notification` はクリック時に任意の�
 
 ### claude-code-hooks tabcolor
 
-Claude Code の状態を WezTerm のタブ色で可視化する。各フックイベントで現在のペイン (`$WEZTERM_PANE`) の user var `claude_state` をセットし、WezTerm 側の `format-tab-title` でその値に応じてタブ背景を塗り分ける。
+Claude Code の状態をターミナルのタブ色で可視化する。kitty と WezTerm に対応する。
 
 ```bash
 claude-code-hooks tabcolor <startup|thinking|idle|waiting|default>
 ```
 
-- WezTerm 外（`WEZTERM_PANE` 未設定）では何もしない。
+- kitty (`$KITTY_WINDOW_ID`) を先に見て、無ければ WezTerm (`$WEZTERM_PANE`) を見る。どちらでもなければ何もしない。
 - 装飾目的なので失敗は握り潰し、フックの流れを止めない。
-
-#### 仕組み
-
-WezTerm には user var をセットする CLI が無いため、`claude_state` は OSC 1337 `SetUserVar` エスケープシーケンスで設定する。フックの標準出力は Claude Code にキャプチャされ `/dev/tty` も使えないことがあるので、対話実行で標準出力が端末のときはそこへ、そうでないときは `wezterm cli list` で `$WEZTERM_PANE` の tty デバイスを引いてそこへ書き込む。user var は mux 経由で GUI クライアントへ同期される。
-
-mux 多重化環境では GUI 側のペイン ID が `$WEZTERM_PANE` と一致せず、また Claude のペインがタブのアクティブペインとは限らない。そのため `format-tab-title` 側は `active_pane` だけでなく**タブ内の全ペイン**を走査し、`claude_state` が立っているペインがあればそのタブを塗る。
 
 #### 状態と対応イベント
 
-| 状態 (`claude_state`) | 意味   | フックイベント                                 |
-| --------------------- | ------ | ---------------------------------------------- |
-| `startup`             | 起動時 | `SessionStart`                                 |
-| `thinking`            | 思考中 | `UserPromptSubmit` / `PostToolUse`             |
-| `idle`                | 待機中 | `Stop` / `Notification(idle_prompt)`           |
+| 状態                  | 意味     | フックイベント                                          |
+| --------------------- | -------- | ------------------------------------------------------- |
+| `startup`             | 起動時   | `SessionStart`                                          |
+| `thinking`            | 思考中   | `UserPromptSubmit` / `PostToolUse`                      |
+| `idle`                | 待機中   | `Stop` / `Notification(idle_prompt)`                    |
 | `waiting`             | 入力待ち | `PermissionRequest` / `Notification(permission_prompt)` |
-| `default`             | 非起動時 | `SessionEnd`（タブ色を通常に戻す）           |
+| `default`             | 非起動時 | `SessionEnd`（タブ色を通常に戻す）                      |
 
-#### WezTerm 側の設定
+#### 仕組み: kitty
 
-`wezterm.lua`（または `format-tab-title` を定義しているファイル）で user var を読んでタブを塗る。`use_fancy_tab_bar = true` でもタブ背景に反映される。`active_pane` だけでなくタブ内の全ペイン (`tab.panes`) を走査するのがポイント。
+kitty にはタブ色を直接いじるリモート制御コマンドがあるので、ターミナルへ何も書き込まずに済む。
+
+```bash
+kitten @ set-tab-color --match window_id:$KITTY_WINDOW_ID \
+  active_bg=... active_fg=... inactive_bg=... inactive_fg=...
+```
+
+`--match window_id:` は**そのウィンドウを含むタブ**を指す。フックは Claude Code の子孫として走るので `$KITTY_WINDOW_ID` でウィンドウが特定でき、同じく継承される `$KITTY_LISTEN_ON` で接続先の kitty インスタンスが決まる。`default` は 4 色すべてに `NONE` を渡して `kitty.conf` の色へ戻す。
+
+色は状態ごとに固定で持つ。非アクティブ時の色は、アクティブ時の色を HSL の明度で 25% 暗くしたもの (WezTerm 側で描画時に `Color:darken(0.25)` していたのと同じ値)。前景はいずれの状態でも `#1a1b26`。
+
+| 状態       | `active_bg` | `inactive_bg` |
+| ---------- | ----------- | ------------- |
+| `startup`  | `#7dcfff`   | `#1eacff`     |
+| `thinking` | `#bb9af7`   | `#7c3df0`     |
+| `idle`     | `#9ece6a`   | `#77b03a`     |
+| `waiting`  | `#e0af68`   | `#cc8a2a`     |
+
+kitty 側の設定は不要。
+
+#### 仕組み: WezTerm
+
+WezTerm には user var をセットする CLI が無いため、`claude_state` は OSC 1337 `SetUserVar` エスケープシーケンスで設定し、色に変換するのは `format-tab-title` 側の仕事になる。フックの標準出力は Claude Code にキャプチャされ `/dev/tty` も使えないことがあるので、対話実行で標準出力が端末のときはそこへ、そうでないときは `wezterm cli list` で `$WEZTERM_PANE` の tty デバイスを引いてそこへ書き込む。user var は mux 経由で GUI クライアントへ同期される。
+
+mux 多重化環境では GUI 側のペイン ID が `$WEZTERM_PANE` と一致せず、また Claude のペインがタブのアクティブペインとは限らない。そのため `format-tab-title` 側は `active_pane` だけでなく**タブ内の全ペイン**を走査し、`claude_state` が立っているペインがあればそのタブを塗る。
+
+`wezterm.lua`（または `format-tab-title` を定義しているファイル）で user var を読んでタブを塗る。`use_fancy_tab_bar = true` でもタブ背景に反映される。
 
 ```lua
 local STATE_BG = {

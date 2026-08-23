@@ -25,7 +25,7 @@ Commands:
                     ARG is a session id, a note path, or --list [N] for JSON)
   backfill [--dry-run]  Backfill related links between session notes
   notify TITLE MSG  Show macOS notification (suppressed if WezTerm pane is focused)
-  tabcolor STATE    Set WezTerm tab color for Claude Code state (startup|thinking|idle|waiting|default)
+  tabcolor STATE    Set the tab color (kitty / WezTerm) for Claude Code state (startup|thinking|idle|waiting|default)
   gh-guard          Ask before a gh command writes to a guarded host (PreToolUse hook, reads JSON from stdin)
   setup [--diff]    Merge hooks.json into ~/.claude/settings.json
   completion SHELL  Output shell completion script (bash, zsh, fish)
