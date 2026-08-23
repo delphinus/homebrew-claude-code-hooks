@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
+
+	"github.com/delphinus/homebrew-claude-code-hooks/internal/kitty"
 )
 
 // userVarName is the WezTerm user var that holds the current Claude Code state.
@@ -73,7 +74,7 @@ var stateColors = map[string]tabColors{
 }
 
 func runKitty(state, window string) error {
-	kitten := kittenPath()
+	kitten := kitty.Path()
 	if kitten == "" {
 		return nil
 	}
@@ -95,23 +96,6 @@ func runKitty(state, window string) error {
 	}
 	_ = exec.Command(kitten, args...).Run()
 	return nil
-}
-
-// kittenPath locates the kitten binary. A hook may be launched with a minimal
-// PATH, so fall back to the app bundle before giving up.
-func kittenPath() string {
-	if p, err := exec.LookPath("kitten"); err == nil {
-		return p
-	}
-	for _, p := range []string{
-		"/Applications/kitty.app/Contents/MacOS/kitten",
-		filepath.Join(os.Getenv("HOME"), "Applications/kitty.app/Contents/MacOS/kitten"),
-	} {
-		if fi, err := os.Stat(p); err == nil && !fi.IsDir() {
-			return p
-		}
-	}
-	return ""
 }
 
 //: WezTerm

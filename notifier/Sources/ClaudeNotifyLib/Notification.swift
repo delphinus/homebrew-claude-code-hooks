@@ -20,7 +20,10 @@ public final class NotificationSystem {
     /// クリック可能な通知を投稿する。pane / sock は userInfo に載せ、クリック時に読む。
     /// subtitle には通知元のタブ ("<タブ番号>: <タブタイトル>") を載せる。
     /// 配送完了まで待って return する (クリック待ちの長時間ループは不要 = 再起動で処理される)。
-    public func post(title: String, subtitle: String?, message: String, pane: String?, sock: String?) {
+    public func post(
+        title: String, subtitle: String?, message: String,
+        pane: String?, sock: String?, term: Activator.Term = .wezterm
+    ) {
         _ = ensureSetup()
 
         let authSema = DispatchSemaphore(value: 0)
@@ -47,6 +50,7 @@ public final class NotificationSystem {
         var info: [String: String] = [:]
         if let pane = pane { info["pane"] = pane }
         if let sock = sock { info["sock"] = sock }
+        info["term"] = term.rawValue
         content.userInfo = info
 
         // 同一ペインの通知は最新で置き換える (スタックさせない)。ペイン不明時は固定 id。

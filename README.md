@@ -8,7 +8,7 @@ Claude Code での会話やツール操作を Obsidian ノートに自動記録�
 - **`claude-code-hooks open`** — セッションのノートを Obsidian で開く（引数なしで現在のセッション）
 - **`claude-code-hooks backfill`** — 既存ノートに session リンクをバックフィルする
 - **`claude-code-hooks setup`** — フック設定を `~/.claude/settings.json` に適用する
-- **`claude-code-hooks notify`** — macOS 通知を表示するヘルパー（クリックで WezTerm のペインを前面化。WezTerm のフォーカス検出対応）
+- **`claude-code-hooks notify`** — macOS 通知を表示するヘルパー（クリックでペインを前面化。フォーカス検出対応。kitty / WezTerm）
 - **`claude-code-hooks tabcolor`** — Claude Code の状態に応じてタブ色を変える（kitty / WezTerm 対応）
 - **`claude-code-hooks gh-guard`** — `gh` が保護対象ホストに書き込む前に確認プロンプトを強制する
 - **`claude-code-hooks completion`** — シェル補完スクリプトを出力する（Bash / Zsh / Fish 対応）
@@ -135,28 +135,43 @@ claude-code-hooks backfill
 
 ### claude-code-hooks notify
 
-macOS の通知を表示する。WezTerm 使用時は、現在のペインがフォーカスされている場合は通知を抑制する。
+macOS の通知を表示する。kitty / WezTerm 使用時は、通知元のペインをいま実際に見ている場合は通知を抑制する。
 
 ```bash
 claude-code-hooks notify 'タイトル' 'メッセージ'
 ```
 
-WezTerm 内で実行され、かつネイティブヘルパー `claude-code-hooks-notify` が入っている場合は、**クリックすると通知元の WezTerm ペイン（＝そのタブ・ウィンドウ）が前面化する**クリック可能な通知を出す。ヘルパーが無い環境や WezTerm 外では、従来どおり `osascript` によるプレーンな通知にフォールバックする（通知自体は必ず出る）。
+kitty / WezTerm 内で実行され、かつネイティブヘルパー `claude-code-hooks-notify` が入っている場合は、**クリックすると通知元のペイン（＝そのタブ・ウィンドウ）が前面化する**クリック可能な通知を出す。ヘルパーが無い環境や対応外の端末では、従来どおり `osascript` によるプレーンな通知にフォールバックする（通知自体は必ず出る）。
 
-WezTerm 内では、通知のサブタイトルに**通知元のタブ**を `<タブ番号>: <タブタイトル>` の形式で載せる（例: `4: ⠂ 通知にタブ番号とタイトルを表示`）。タブ番号・タイトルはタブバーの表示に合わせてあるので、複数タブで Claude Code を走らせていてもどのセッションからの通知か一目で分かる。タイトルが 40 文字を超える場合は末尾を `…` で省略する。
+通知のサブタイトルには**通知元のタブ**を `<タブ番号>: <タブタイトル>` の形式で載せる（例: `4: ⠂ 通知にタブ番号とタイトルを表示`）。タブ番号・タイトルはタブバーの表示に合わせてあるので、複数タブで Claude Code を走らせていてもどのセッションからの通知か一目で分かる。タイトルが 40 文字を超える場合は末尾を `…` で省略する。
 
 - 初回の通知時に通知の許可を求められる。許可するまで通知は出ない（システム設定 > 通知 > claude-code-hooks-notify）。
 - クリック挙動は URL スキームでも叩ける（動作確認用）:
 
   ```bash
-  open "claude-code-hooks://activate?pane=<WEZTERM_PANE>&sock=<WEZTERM_UNIX_SOCKET>"
+  # kitty
+  open "claude-code-hooks://activate?pane=$KITTY_WINDOW_ID&sock=$KITTY_LISTEN_ON&term=kitty"
+  # WezTerm
+  open "claude-code-hooks://activate?pane=$WEZTERM_PANE&sock=$WEZTERM_UNIX_SOCKET"
   ```
+
+  `term` を省略すると `wezterm` として扱う。通知センターに残っている古い通知（`term` を載せていない頃のもの）をクリックしても壊れないようにするため。
 
 #### 仕組み
 
-macOS の `osascript` の `display notification` はクリック時に任意のアクションを実行できない。そこでクリック可能な通知は、`UserNotifications`（`UNUserNotificationCenter`）を使う署名済みの `.app`（`claude-code-hooks-notify`、Formula が Go バイナリと一緒に配置する）が担う。通知にはペイン ID (`$WEZTERM_PANE`) と mux ソケット (`$WEZTERM_UNIX_SOCKET`) を `userInfo` として載せ、クリック時にそれを読んで `wezterm cli activate-pane --pane-id <N>` → `open -a WezTerm` を実行する。ヘルパープロセスが終了した後にクリックされても、LaunchServices がバンドルを再起動して処理するため、フックのプロセスを生かし続ける必要はない。
+macOS の `osascript` の `display notification` はクリック時に任意のアクションを実行できない。そこでクリック可能な通知は、`UserNotifications`（`UNUserNotificationCenter`）を使う署名済みの `.app`（`claude-code-hooks-notify`、Formula が Go バイナリと一緒に配置する）が担う。通知にはペイン ID・ソケット・端末種別を `userInfo` として載せ、クリック時にそれを読んで前面化のコマンドを実行する。ヘルパープロセスが終了した後にクリックされても、LaunchServices がバンドルを再起動して処理するため、フックのプロセスを生かし続ける必要はない。
 
-サブタイトルのタブ情報は `wezterm cli list --format json` から組み立てる。WezTerm の CLI はタブ番号を返さないため、番号は同じウィンドウ内でタブが現れる順序（タブバーの並び順）から導出する。タイトルは WezTerm 側の `format-tab-title` と同じ規則で、明示的な `tab_title` があればそれを、無ければタブ内のペインタイトルを重複を除いて `|` で連結したものを使う。解決に失敗した場合はサブタイトルを付けずに通知する。
+| | 前面化コマンド | ソケットを渡す環境変数 |
+|---|---|---|
+| kitty | `kitten @ focus-window --match id:<N>` → `open -a kitty` | `KITTY_LISTEN_ON` |
+| WezTerm | `wezterm cli activate-pane --pane-id <N>` → `open -a WezTerm` | `WEZTERM_UNIX_SOCKET` |
+
+ペイン ID は整数のみ許可する（シェルインジェクション防止）。ソケットはコマンド文字列に直書きせず環境変数で子プロセスへ渡す。前面化に失敗しても `;` 区切りでターミナル自体は前面化する。
+
+サブタイトルとフォーカス判定は、端末ごとに次のように解決する。解決に失敗した場合はサブタイトルを付けず、通知は抑制せずに出す。
+
+- **kitty**: `kitten @ ls` 一回で済む。タブタイトルはそのまま取れ、タブ番号は OS ウィンドウ内の並び順（`goto_tab` と同じ数え方）。OS ウィンドウの `is_focused` が「kitty が最前面か」を含んでいるので、フォーカス判定に別途フロントモストのプロセスを調べる必要がない。
+- **WezTerm**: `wezterm cli list --format json` から組み立てる。CLI がタブ番号を返さないため、番号は同じウィンドウ内でタブが現れる順序（タブバーの並び順）から導出する。タイトルは `format-tab-title` と同じ規則で、明示的な `tab_title` があればそれを、無ければタブ内のペインタイトルを重複を除いて `|` で連結したものを使う。フォーカス判定には `osascript` でのフロントモスト判定と `wezterm cli list-clients` が要る。
 
 ### claude-code-hooks tabcolor
 

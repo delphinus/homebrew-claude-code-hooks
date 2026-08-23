@@ -10,54 +10,64 @@ import (
 
 // helperBinary is the native (.app) helper installed alongside this binary. It
 // posts a *clickable* macOS notification: clicking it (or opening the
-// claude-code-hooks://activate?pane=N URL) focuses the originating WezTerm pane.
+// claude-code-hooks://activate?pane=N URL) focuses the originating pane.
 const helperBinary = "claude-code-hooks-notify"
 
 // Run executes the notify subcommand.
-// It shows a macOS notification, suppressing it if the current WezTerm pane is focused.
 //
-// Inside WezTerm the notification carries a subtitle with the originating tab
-// ("<タブ番号>: <タブタイトル>") so it is obvious which session it came from.
+// It shows a macOS notification, suppressing it when the pane it came from is the
+// one being looked at right now. The notification carries a subtitle with the
+// originating tab ("<タブ番号>: <タブタイトル>") so it is obvious which session it
+// came from, and when the native helper is installed it becomes clickable
+// (click -> focus that pane).
 //
-// When running inside WezTerm and the native helper is installed, the helper is
-// used so the notification becomes clickable (click -> activate this pane). In
-// every other case (helper missing, not in WezTerm, or the helper fails) it
-// falls back to a plain osascript notification, so a notification is always shown.
+// kitty and WezTerm are supported, probed in that order. In every other case
+// (unknown terminal, helper missing, or the helper fails) it falls back to a plain
+// osascript notification, so a notification is always shown.
 func Run(title, message string) error {
-	// Check if running in WezTerm
-	weztermPane := os.Getenv("WEZTERM_PANE")
-	subtitle := ""
-	if weztermPane != "" {
-		if shouldSuppress(weztermPane) {
+	if window := os.Getenv("KITTY_WINDOW_ID"); window != "" {
+		label, focused := kittyTab(window)
+		if focused {
 			return nil
 		}
-
-		subtitle = tabLabel(weztermPane)
-
-		if path, err := exec.LookPath(helperBinary); err == nil {
-			if err := runHelper(path, title, subtitle, message, weztermPane); err == nil {
-				return nil
-			}
-			// fall through to osascript on failure
-		}
+		return post(title, label, message, window, "kitty")
 	}
 
+	if pane := os.Getenv("WEZTERM_PANE"); pane != "" {
+		if shouldSuppress(pane) {
+			return nil
+		}
+		return post(title, tabLabel(pane), message, pane, "wezterm")
+	}
+
+	return osascriptNotify(title, "", message)
+}
+
+// post prefers the clickable native helper and falls back to osascript.
+func post(title, subtitle, message, pane, term string) error {
+	if path, err := exec.LookPath(helperBinary); err == nil {
+		if err := runHelper(path, title, subtitle, message, pane, term); err == nil {
+			return nil
+		}
+		// fall through to osascript on failure
+	}
 	return osascriptNotify(title, subtitle, message)
 }
 
 // helperArgs builds the argument list for the native notifier helper.
 // An empty subtitle is omitted entirely (older helpers ignore unknown flags).
-// WEZTERM_UNIX_SOCKET is passed via the inherited environment, not here.
-func helperArgs(title, subtitle, message, pane string) []string {
+// The socket (KITTY_LISTEN_ON / WEZTERM_UNIX_SOCKET) is passed via the inherited
+// environment, not here.
+func helperArgs(title, subtitle, message, pane, term string) []string {
 	args := []string{"post", "--title", title}
 	if subtitle != "" {
 		args = append(args, "--subtitle", subtitle)
 	}
-	return append(args, "--message", message, "--pane", pane)
+	return append(args, "--message", message, "--pane", pane, "--term", term)
 }
 
-func runHelper(path, title, subtitle, message, pane string) error {
-	cmd := exec.Command(path, helperArgs(title, subtitle, message, pane)...)
+func runHelper(path, title, subtitle, message, pane, term string) error {
+	cmd := exec.Command(path, helperArgs(title, subtitle, message, pane, term)...)
 	return cmd.Run()
 }
 

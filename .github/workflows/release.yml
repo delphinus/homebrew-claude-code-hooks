@@ -91,7 +91,7 @@ jobs:
 
                 シェル補完は自動的にインストールされています（Bash / Zsh / Fish）。
 
-                通知をクリックすると、その Claude Code が動いている WezTerm のペインが前面化します。
+                通知をクリックすると、その Claude Code が動いているペインが前面化します (kitty / WezTerm)。
                 初回の通知時に通知の許可を求められるので許可してください
                 （システム設定 > 通知 > claude-code-hooks-notify）。
 
