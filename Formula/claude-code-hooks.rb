@@ -1,9 +1,9 @@
 class ClaudeCodeHooks < Formula
   desc "Claude Code hooks for Obsidian integration and notifications"
   homepage "https://github.com/delphinus/homebrew-claude-code-hooks"
-  url "https://github.com/delphinus/homebrew-claude-code-hooks/releases/download/v2.37.0/claude-code-hooks.tar.gz"
-  sha256 "6495086b70b4fba78254ea616ae921d40e7dc17e632bf98a6863d4250f5853d1"
-  version "2.37.0"
+  url "https://github.com/delphinus/homebrew-claude-code-hooks/releases/download/v2.38.0/claude-code-hooks.tar.gz"
+  sha256 "e705f50b1d945aad25b5b94c3d54f8d00ab91c27342e740200e6bedfc362139a"
+  version "2.38.0"
 
   depends_on :macos
 
@@ -33,7 +33,7 @@ class ClaudeCodeHooks < Formula
 
       シェル補完は自動的にインストールされています（Bash / Zsh / Fish）。
 
-      通知をクリックすると、その Claude Code が動いている WezTerm のペインが前面化します。
+      通知をクリックすると、その Claude Code が動いているペインが前面化します (kitty / WezTerm)。
       初回の通知時に通知の許可を求められるので許可してください
       （システム設定 > 通知 > claude-code-hooks-notify）。
 
