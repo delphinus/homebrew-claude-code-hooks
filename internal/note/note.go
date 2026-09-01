@@ -62,11 +62,17 @@ func GetOrCreateNote(sessionID, cwd, prompt string) (string, error) {
 
 	var oldNote string
 	if cache != nil {
-		// CWD unchanged or unknown → return existing note
-		if cwd == "" || cache.CWD == "" || cwd == cache.CWD {
+		// A note belongs to a project, not to a directory: notes are written to
+		// vaultDir/<project>/, so only a move to a different project warrants a
+		// new one. Comparing the raw cwd used to split one conversation into a
+		// note per `cd` — a single session came out as seven fragments while it
+		// moved between a repository root and a directory inside it, each
+		// fragment holding only the turns recorded while it happened to be
+		// current (the hooks append, they do not rewrite).
+		if cwd == "" || cache.CWD == "" || sameProject(cwd, cache.CWD) {
 			return cache.NotePath, nil
 		}
-		// CWD changed → will create new note, keep reference to old
+		// Different project → will create new note, keep reference to old
 		oldNote = cache.NotePath
 	}
 
@@ -214,6 +220,15 @@ func FindNotesBySessionID(sessionID, vaultDir string) ([]string, error) {
 
 // repoRoot walks up from dir looking for a .git directory or file.
 // Returns the repository root if found, otherwise returns dir unchanged.
+// sameProject reports whether two directories belong to the same note.
+//
+// Directories inside one repository share it. A directory outside any repository
+// is its own project, which is what repoRoot returns for it, so two unrelated
+// plain directories stay apart.
+func sameProject(a, b string) bool {
+	return repoRoot(a) == repoRoot(b)
+}
+
 func repoRoot(dir string) string {
 	cur := dir
 	for {
@@ -314,4 +329,3 @@ func openInObsidian(notePath string) {
 		}
 	}
 }
-
