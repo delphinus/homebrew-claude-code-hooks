@@ -5,6 +5,10 @@
         {
           "type": "command",
           "command": "claude-code-hooks tabcolor startup"
+        },
+        {
+          "type": "command",
+          "command": "claude-code-hooks stamp"
         }
       ]
     }
@@ -47,6 +51,10 @@
         {
           "type": "command",
           "command": "claude-code-hooks tabcolor default"
+        },
+        {
+          "type": "command",
+          "command": "claude-code-hooks stamp --clear"
         },
         {
           "type": "command",
