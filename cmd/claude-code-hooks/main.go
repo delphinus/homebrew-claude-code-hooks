@@ -12,6 +12,7 @@ import (
 	"github.com/delphinus/homebrew-claude-code-hooks/internal/opencmd"
 	"github.com/delphinus/homebrew-claude-code-hooks/internal/save"
 	"github.com/delphinus/homebrew-claude-code-hooks/internal/setup"
+	"github.com/delphinus/homebrew-claude-code-hooks/internal/stamp"
 	"github.com/delphinus/homebrew-claude-code-hooks/internal/tabcolor"
 )
 
@@ -26,6 +27,9 @@ Commands:
   backfill [--dry-run]  Backfill related links between session notes
   notify TITLE MSG  Show macOS notification (suppressed if the originating pane is focused)
   tabcolor STATE    Set the tab color (kitty / WezTerm) for Claude Code state (startup|thinking|idle|waiting|default)
+  stamp [--clear]   Record the session id on the kitty window, so the layout can be
+                    restored after kitty exits (SessionStart hook, reads JSON from
+                    stdin). --clear drops it again (SessionEnd hook)
   gh-guard          Ask before a gh command writes to a guarded host (PreToolUse hook, reads JSON from stdin)
   setup [--diff]    Merge hooks.json into ~/.claude/settings.json
   completion SHELL  Output shell completion script (bash, zsh, fish)
@@ -86,6 +90,23 @@ func main() {
 			os.Exit(1)
 		}
 		err = tabcolor.Run(os.Args[2])
+
+	case "stamp":
+		if len(os.Args) > 2 {
+			if os.Args[2] != "--clear" {
+				fmt.Fprintf(os.Stderr, "unknown flag for stamp: %s\n\nusage: claude-code-hooks stamp [--clear]\n", os.Args[2])
+				os.Exit(1)
+			}
+			// SessionEnd also sends a payload, but clearing needs nothing from it.
+			err = stamp.Clear()
+			break
+		}
+		input, e := hookdata.ReadFromStdin()
+		if e != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", e)
+			os.Exit(1)
+		}
+		err = stamp.Run(input.SessionID)
 
 	case "gh-guard":
 		input, e := hookdata.ReadFromStdin()
