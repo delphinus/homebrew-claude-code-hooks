@@ -220,3 +220,68 @@ func TestRepoRoot(t *testing.T) {
 		}
 	})
 }
+
+func TestGetOrCreateNoteKeepsOneNotePerProject(t *testing.T) {
+	// A note is written per project directory, so moving around inside one
+	// repository must keep appending to the same note. Comparing the raw cwd
+	// instead split a single conversation into a fragment per `cd`.
+	newRepo := func(t *testing.T) string {
+		t.Helper()
+		root := t.TempDir()
+		if err := os.Mkdir(filepath.Join(root, ".git"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		return root
+	}
+
+	setup := func(t *testing.T) {
+		t.Helper()
+		t.Setenv("CLAUDE_OBSIDIAN_VAULT", t.TempDir())
+		t.Setenv("CLAUDE_OBSIDIAN_CACHE", t.TempDir())
+		t.Setenv("CLAUDE_OBSIDIAN_AUTO_OPEN", "")
+	}
+
+	t.Run("subdirectory of the same repo reuses the note", func(t *testing.T) {
+		setup(t)
+		root := newRepo(t)
+		sub := filepath.Join(root, ".config", "kitty")
+		if err := os.MkdirAll(sub, 0o755); err != nil {
+			t.Fatal(err)
+		}
+
+		first, err := GetOrCreateNote("session-1", root, "最初の質問")
+		if err != nil {
+			t.Fatal(err)
+		}
+		second, err := GetOrCreateNote("session-1", sub, "次の質問")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if second != first {
+			t.Errorf("moving into %q made a new note\n got %q\nwant %q", sub, second, first)
+		}
+		// And back out again, which is how the fragments used to pile up.
+		third, err := GetOrCreateNote("session-1", root, "さらに次の質問")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if third != first {
+			t.Errorf("moving back to %q made a new note\n got %q\nwant %q", root, third, first)
+		}
+	})
+
+	t.Run("a different repo still starts a new note", func(t *testing.T) {
+		setup(t)
+		first, err := GetOrCreateNote("session-2", newRepo(t), "最初の質問")
+		if err != nil {
+			t.Fatal(err)
+		}
+		second, err := GetOrCreateNote("session-2", newRepo(t), "別のリポジトリでの質問")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if second == first {
+			t.Errorf("switching repositories reused the note %q", first)
+		}
+	})
+}
