@@ -155,7 +155,7 @@ func MostRecentNoteForCWD(cwd string) (string, error) {
 				return m.Path, nil
 			}
 		}
-		project := filepath.Base(repoRoot(cwd))
+		project := projectName(cwd)
 		if project != "" && project != "." && project != string(filepath.Separator) {
 			for _, m := range metas {
 				if m.Project == project {
