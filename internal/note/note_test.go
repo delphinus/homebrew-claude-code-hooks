@@ -284,4 +284,50 @@ func TestGetOrCreateNoteKeepsOneNotePerProject(t *testing.T) {
 			t.Errorf("switching repositories reused the note %q", first)
 		}
 	})
+
+	t.Run("a hidden directory gets a dot- prefixed project directory", func(t *testing.T) {
+		// Obsidian skips directories starting with a dot, so a note written to
+		// one is invisible to search there.
+		setup(t)
+		vault := os.Getenv("CLAUDE_OBSIDIAN_VAULT")
+		hidden := filepath.Join(t.TempDir(), "claude-scratch", ".claude")
+		if err := os.MkdirAll(hidden, 0o755); err != nil {
+			t.Fatal(err)
+		}
+
+		notePath, err := GetOrCreateNote("session-3", hidden, "隠しディレクトリでの質問")
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err := filepath.Rel(vault, filepath.Dir(notePath))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got != "dot-claude" {
+			t.Errorf("note for %q landed in %q, want %q", hidden, got, "dot-claude")
+		}
+	})
+}
+
+func TestProjectName(t *testing.T) {
+	tests := []struct {
+		name string
+		cwd  string
+		want string
+	}{
+		{"plain directory", "/Users/foo/claude-scratch", "claude-scratch"},
+		{"hidden directory", "/Users/foo/claude-scratch/.claude", "dot-claude"},
+		{"hidden directory in home", "/Users/foo/.config", "dot-config"},
+		{"no cwd", "", "unknown"},
+		{"current directory", ".", "."},
+		{"parent directory", "..", ".."},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// None of these paths exist, so repoRoot falls back to cwd itself.
+			if got := projectName(tt.cwd); got != tt.want {
+				t.Errorf("projectName(%q) = %q, want %q", tt.cwd, got, tt.want)
+			}
+		})
+	}
 }

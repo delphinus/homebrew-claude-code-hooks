@@ -95,11 +95,14 @@ ended: 2026-06-29T18:02:33
 #### ノートのファイル名規則
 
 ```
-YYYYMMDD-HHMMSS-SSID-タイトル.md
+<プロジェクト>/YYYYMMDD-HHMMSS-SSID-タイトル.md
 ```
 
+- プロジェクト: cwd を含む git リポジトリのルート名（リポジトリ外なら cwd 自身の名前）
 - `SSID`: セッション ID の先頭4文字
 - タイトル: 最初のユーザープロンプトの先頭50文字から生成
+
+隠しディレクトリで起動した場合、プロジェクト名の先頭のドットは `dot-` に置き換える（`~/claude-scratch/.claude` → `dot-claude/`）。Obsidian はドット始まりのフォルダを vault の index から除外するため、そのままの名前で保存すると検索にもファイルエクスプローラにも出てこなくなる。
 
 ### claude-code-hooks open
 

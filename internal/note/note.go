@@ -76,10 +76,7 @@ func GetOrCreateNote(sessionID, cwd, prompt string) (string, error) {
 		oldNote = cache.NotePath
 	}
 
-	project := "unknown"
-	if cwd != "" {
-		project = filepath.Base(repoRoot(cwd))
-	}
+	project := projectName(cwd)
 
 	now := time.Now()
 	ts := now.Format("20060102-150405")
@@ -216,6 +213,36 @@ func FindNotesBySessionID(sessionID, vaultDir string) ([]string, error) {
 		return nil
 	})
 	return results, err
+}
+
+// projectName returns the name of the vault directory holding the notes for
+// sessions running in cwd.
+func projectName(cwd string) string {
+	if cwd == "" {
+		return "unknown"
+	}
+	return unhide(filepath.Base(repoRoot(cwd)))
+}
+
+// unhide rewrites a leading dot into a "dot-" prefix.
+//
+// Obsidian leaves out every directory whose name starts with a dot: notes
+// written under one are missing from search and from the file explorer, even
+// though the walkers here still find them. A session started in a hidden
+// directory outside any repository (`~/claude-scratch/.claude`) used to land in
+// exactly such a directory, so `.claude` becomes `dot-claude` instead. The
+// prefix also keeps it apart from a project genuinely named `claude`.
+func unhide(name string) string {
+	if !strings.HasPrefix(name, ".") {
+		return name
+	}
+	trimmed := strings.TrimLeft(name, ".")
+	if trimmed == "" {
+		// "." and ".." carry no name to keep; leave them to the callers, which
+		// already treat them as "no project".
+		return name
+	}
+	return "dot-" + trimmed
 }
 
 // repoRoot walks up from dir looking for a .git directory or file.
