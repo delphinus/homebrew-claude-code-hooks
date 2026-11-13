@@ -92,8 +92,9 @@ func RunSessionEndBG(sessionID string) {
 		}
 
 		// Record the session end time (= last activity) into frontmatter.
-		// "ended" is the last `## 🤖 Assistant (HH:MM:SS)` timestamp, which tracks
-		// real work end without the idle inflation of the actual quit time.
+		// "ended" is the last timestamped entry in the note, which tracks real
+		// work end without the idle inflation of the actual quit time. The quit
+		// time is used only when the note has no timestamped entry at all.
 		start := ""
 		if fm, _, perr := frontmatter.Parse(noteContent); perr == nil {
 			start = fm.Date
@@ -154,40 +155,58 @@ func readHead(path string, maxBytes int) (string, error) {
 	return string(buf[:n]), nil
 }
 
-// Headings are written as "## 🤖 Assistant (HH:MM:SS)"; the emoji is optional
-// here so notes written before it was added still match.
-var assistantTSRe = regexp.MustCompile(`(?m)^## (?:🤖 )?Assistant \((\d{2}):(\d{2}):(\d{2})\)`)
+// activityTSRe matches every timestamped entry the hooks write: the
+// "## 🤖 Assistant (HH:MM:SS)" headings (the emoji is optional so notes written
+// before it was added still match) and the callout headers such as
+// "> [!question] User (HH:MM:SS)" and "> [!terminal]- <description> (HH:MM:SS)".
+// A note split off by a cwd change can consist of callouts only, so the
+// Assistant headings alone are not enough to find its last activity.
+var activityTSRe = regexp.MustCompile(`(?m)^(?:## (?:🤖 )?Assistant|> \[![a-z]+\][-+]?.*) \((\d{2}):(\d{2}):(\d{2})\)[ \t]*$`)
 
-// lastActivityTime returns the timestamp of the last "## 🤖 Assistant (HH:MM:SS)"
-// heading in the note, combined with the date from dateStr (frontmatter "date",
-// formatted "2006-01-02T15:04:05"). This is the last real activity, used as the
-// session end time (no idle inflation). If the last activity's clock time is
-// earlier than the start, the session crossed midnight and a day is added.
-// Returns "" if the note has no assistant heading or dateStr is unparseable.
+// rollbackTolerance is how far a timestamp may go backwards before it is taken
+// as the next day. Entries are appended in order, but a spooled append can land
+// slightly late; a real midnight crossing goes back by many hours.
+const rollbackTolerance = time.Hour
+
+// lastActivityTime returns the time of the last timestamped entry in the note
+// (Assistant heading or callout header), as "2006-01-02T15:04:05". The entries
+// only carry HH:MM:SS, so the date is reconstructed by walking them in order
+// from dateStr (frontmatter "date") and adding a day whenever the clock goes
+// backwards. This is the last real activity, used as the session end time so
+// that a session left open and closed later does not count the idle time.
+// Returns "" if the note has no timestamped entry or dateStr is unparseable.
 func lastActivityTime(notePath, dateStr string) string {
 	content, err := os.ReadFile(notePath)
 	if err != nil {
 		return ""
 	}
-	matches := assistantTSRe.FindAllStringSubmatch(string(content), -1)
+	matches := activityTSRe.FindAllStringSubmatch(string(content), -1)
 	if len(matches) == 0 {
 		return ""
 	}
-	last := matches[len(matches)-1]
 
 	const layout = "2006-01-02T15:04:05"
 	start, err := time.ParseInLocation(layout, dateStr, time.Local)
 	if err != nil {
 		return ""
 	}
-	hh, _ := strconv.Atoi(last[1])
-	mm, _ := strconv.Atoi(last[2])
-	ss, _ := strconv.Atoi(last[3])
-	end := time.Date(start.Year(), start.Month(), start.Day(), hh, mm, ss, 0, time.Local)
-	if end.Before(start) {
-		end = end.Add(24 * time.Hour)
+	cur, last := start, start
+	for _, m := range matches {
+		hh, _ := strconv.Atoi(m[1])
+		mm, _ := strconv.Atoi(m[2])
+		ss, _ := strconv.Atoi(m[3])
+		t := time.Date(cur.Year(), cur.Month(), cur.Day(), hh, mm, ss, 0, time.Local)
+		if t.Before(cur.Add(-rollbackTolerance)) {
+			t = t.AddDate(0, 0, 1)
+		} else if t.Before(cur) {
+			continue // slightly out of order; keep the later time
+		}
+		cur = t
+		if t.After(last) {
+			last = t
+		}
 	}
-	return end.Format(layout)
+	return last.Format(layout)
 }
 
 // setEnded writes the ended timestamp into the note's frontmatter.
