@@ -1,12 +1,14 @@
 package save
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"syscall"
@@ -34,7 +36,7 @@ func handleSessionEnd(input *hookdata.HookInput) error {
 	}
 
 	if sessionEndSync {
-		RunSessionEndBG(input.SessionID)
+		RunSessionEndBG(input.SessionID, input.TranscriptPath)
 		return nil
 	}
 
@@ -46,7 +48,11 @@ func handleSessionEnd(input *hookdata.HookInput) error {
 		return nil
 	}
 
-	cmd := exec.Command(exe, "_session-end-bg", input.SessionID)
+	args := []string{"_session-end-bg", input.SessionID}
+	if input.TranscriptPath != "" {
+		args = append(args, input.TranscriptPath)
+	}
+	cmd := exec.Command(exe, args...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Stdout = nil
 	cmd.Stderr = nil
@@ -61,8 +67,8 @@ func handleSessionEnd(input *hookdata.HookInput) error {
 }
 
 // RunSessionEndBG is the background worker for SessionEnd processing.
-// It is invoked as: claude-code-hooks _session-end-bg <session_id>
-func RunSessionEndBG(sessionID string) {
+// It is invoked as: claude-code-hooks _session-end-bg <session_id> [transcript_path]
+func RunSessionEndBG(sessionID, transcriptPath string) {
 	// Ignore signals so we survive even if parent is killed
 	signal.Ignore(syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
 
@@ -75,6 +81,10 @@ func RunSessionEndBG(sessionID string) {
 		os.Remove(sessionCachePath)
 		return
 	}
+
+	// The notes only carry HH:MM:SS. The transcript has full timestamps, which
+	// pin down the date when the session was resumed after a day or more.
+	transcript := transcriptTimes(transcriptPath)
 
 	for _, notePath := range sessionNotes {
 		if _, err := os.Stat(notePath); err != nil {
@@ -99,7 +109,7 @@ func RunSessionEndBG(sessionID string) {
 		if fm, _, perr := frontmatter.Parse(noteContent); perr == nil {
 			start = fm.Date
 		}
-		ended := lastActivityTime(notePath, start)
+		ended := lastActivityTime(notePath, start, transcript)
 		if ended == "" {
 			ended = time.Now().Format("2006-01-02T15:04:05")
 		}
@@ -170,12 +180,19 @@ const rollbackTolerance = time.Hour
 
 // lastActivityTime returns the time of the last timestamped entry in the note
 // (Assistant heading or callout header), as "2006-01-02T15:04:05". The entries
-// only carry HH:MM:SS, so the date is reconstructed by walking them in order
-// from dateStr (frontmatter "date") and adding a day whenever the clock goes
-// backwards. This is the last real activity, used as the session end time so
-// that a session left open and closed later does not count the idle time.
+// only carry HH:MM:SS, so each one is dated by walking them in order from
+// dateStr (frontmatter "date"):
+//
+//   - If the transcript has a timestamp at the same HH:MM (within a minute) at
+//     or after the current position, its date is used. This is what gets a
+//     session resumed after a day or more right.
+//   - Otherwise a day is added whenever the clock goes backwards, which only
+//     handles gaps shorter than a day.
+//
+// This is the last real activity, used as the session end time so that a
+// session left open and closed later does not count the idle time.
 // Returns "" if the note has no timestamped entry or dateStr is unparseable.
-func lastActivityTime(notePath, dateStr string) string {
+func lastActivityTime(notePath, dateStr string, transcript []time.Time) string {
 	content, err := os.ReadFile(notePath)
 	if err != nil {
 		return ""
@@ -195,11 +212,19 @@ func lastActivityTime(notePath, dateStr string) string {
 		hh, _ := strconv.Atoi(m[1])
 		mm, _ := strconv.Atoi(m[2])
 		ss, _ := strconv.Atoi(m[3])
-		t := time.Date(cur.Year(), cur.Month(), cur.Day(), hh, mm, ss, 0, time.Local)
-		if t.Before(cur.Add(-rollbackTolerance)) {
-			t = t.AddDate(0, 0, 1)
-		} else if t.Before(cur) {
-			continue // slightly out of order; keep the later time
+		var t time.Time
+		if y, mo, d, ok := transcriptDate(transcript, cur, hh, mm); ok {
+			t = time.Date(y, mo, d, hh, mm, ss, 0, time.Local)
+			if t.Before(cur) {
+				continue
+			}
+		} else {
+			t = time.Date(cur.Year(), cur.Month(), cur.Day(), hh, mm, ss, 0, time.Local)
+			if t.Before(cur.Add(-rollbackTolerance)) {
+				t = t.AddDate(0, 0, 1)
+			} else if t.Before(cur) {
+				continue // slightly out of order; keep the later time
+			}
 		}
 		cur = t
 		if t.After(last) {
@@ -208,6 +233,63 @@ func lastActivityTime(notePath, dateStr string) string {
 	}
 	return last.Format(layout)
 }
+
+// transcriptDate looks for the first transcript timestamp at or after
+// cur - rollbackTolerance whose clock reads hh:mm (within a minute), and
+// returns its date.
+func transcriptDate(transcript []time.Time, cur time.Time, hh, mm int) (int, time.Month, int, bool) {
+	lo := cur.Add(-rollbackTolerance)
+	i := sort.Search(len(transcript), func(i int) bool { return !transcript[i].Before(lo) })
+	want := hh*60 + mm
+	for _, t := range transcript[i:] {
+		got := t.Hour()*60 + t.Minute()
+		diff := got - want
+		if diff < 0 {
+			diff = -diff
+		}
+		if diff <= 1 || diff == 24*60-1 {
+			if t.Hour() == 0 && hh == 23 {
+				t = t.AddDate(0, 0, -1) // 23:59 in the note, 00:00 in the transcript
+			} else if t.Hour() == 23 && hh == 0 {
+				t = t.AddDate(0, 0, 1)
+			}
+			return t.Year(), t.Month(), t.Day(), true
+		}
+	}
+	return 0, 0, 0, false
+}
+
+// transcriptTimes reads every "timestamp" in the transcript (JSON Lines) and
+// returns them in local time, sorted. A missing or unreadable transcript gives
+// nil, and the caller falls back to walking the clock times.
+func transcriptTimes(path string) []time.Time {
+	if path == "" {
+		return nil
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+
+	var out []time.Time
+	r := bufio.NewReader(f)
+	for {
+		line, err := r.ReadBytes('\n')
+		if m := transcriptTSRe.FindSubmatch(line); m != nil {
+			if t, perr := time.Parse(time.RFC3339Nano, string(m[1])); perr == nil {
+				out = append(out, t.In(time.Local))
+			}
+		}
+		if err != nil {
+			break
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Before(out[j]) })
+	return out
+}
+
+var transcriptTSRe = regexp.MustCompile(`"timestamp":"([^"]+)"`)
 
 // setEnded writes the ended timestamp into the note's frontmatter.
 func setEnded(notePath, ended string) {
@@ -240,8 +322,10 @@ func summaryTimeLine(start, ended string) string {
 	h := int(d.Hours())
 	m := int(d.Minutes()) % 60
 	cross := ""
-	if s.YearDay() != e.YearDay() || s.Year() != e.Year() {
-		cross = "(+1d)"
+	sd := time.Date(s.Year(), s.Month(), s.Day(), 0, 0, 0, 0, time.Local)
+	ed := time.Date(e.Year(), e.Month(), e.Day(), 0, 0, 0, 0, time.Local)
+	if days := int(ed.Sub(sd).Hours()/24 + 0.5); days > 0 {
+		cross = fmt.Sprintf("(+%dd)", days)
 	}
 	return fmt.Sprintf("⏱ %s–%s%s (%dh%02dm)", s.Format("15:04"), e.Format("15:04"), cross, h, m)
 }
