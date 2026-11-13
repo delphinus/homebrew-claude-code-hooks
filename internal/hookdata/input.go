@@ -16,6 +16,7 @@ type ToolInput struct {
 
 type HookInput struct {
 	SessionID            string    `json:"session_id"`
+	TranscriptPath       string    `json:"transcript_path"`
 	HookEventName        string    `json:"hook_event_name"`
 	CWD                  string    `json:"cwd"`
 	Prompt               string    `json:"prompt"`

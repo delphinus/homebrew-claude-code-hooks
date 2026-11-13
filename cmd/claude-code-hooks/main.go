@@ -133,7 +133,11 @@ func main() {
 		if len(os.Args) < 3 {
 			os.Exit(1)
 		}
-		save.RunSessionEndBG(os.Args[2])
+		transcriptPath := ""
+		if len(os.Args) >= 4 {
+			transcriptPath = os.Args[3]
+		}
+		save.RunSessionEndBG(os.Args[2], transcriptPath)
 		return
 
 	case "completion":
