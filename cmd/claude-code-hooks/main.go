@@ -13,7 +13,6 @@ import (
 	"github.com/delphinus/homebrew-claude-code-hooks/internal/save"
 	"github.com/delphinus/homebrew-claude-code-hooks/internal/setup"
 	"github.com/delphinus/homebrew-claude-code-hooks/internal/stamp"
-	"github.com/delphinus/homebrew-claude-code-hooks/internal/tabcolor"
 )
 
 var version = "dev"
@@ -26,7 +25,6 @@ Commands:
                     ARG is a session id, a note path, or --list [N] for JSON)
   backfill [--dry-run]  Backfill related links between session notes
   notify TITLE MSG  Show macOS notification (suppressed if the originating pane is focused)
-  tabcolor STATE    Set the tab color (kitty / WezTerm) for Claude Code state (startup|thinking|idle|waiting|default)
   stamp [--clear]   Record the session id on the kitty window, so the layout can be
                     restored after kitty exits (SessionStart hook, reads JSON from
                     stdin). --clear drops it again (SessionEnd hook)
@@ -83,13 +81,6 @@ func main() {
 			message = os.Args[3]
 		}
 		err = notify.Run(title, message)
-
-	case "tabcolor":
-		if len(os.Args) < 3 {
-			fmt.Fprintln(os.Stderr, "usage: claude-code-hooks tabcolor <startup|thinking|idle|waiting|default>")
-			os.Exit(1)
-		}
-		err = tabcolor.Run(os.Args[2])
 
 	case "stamp":
 		if len(os.Args) > 2 {

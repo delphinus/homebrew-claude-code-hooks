@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 )
 
-// Window is one kitty window (what WezTerm calls a pane).
+// Window is one kitty window (a pane inside a tab).
 type Window struct {
 	ID        int    `json:"id"`
 	Title     string `json:"title"`
@@ -26,7 +26,7 @@ type Tab struct {
 
 // OSWindow is one OS-level window. IsFocused is true only when kitty itself is
 // the frontmost application, which is what makes an explicit frontmost-process
-// check (the osascript call the WezTerm code needed) unnecessary.
+// check (an osascript call) unnecessary.
 type OSWindow struct {
 	ID        int   `json:"id"`
 	IsFocused bool  `json:"is_focused"`
