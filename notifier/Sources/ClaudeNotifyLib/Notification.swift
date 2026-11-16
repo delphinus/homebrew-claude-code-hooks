@@ -22,7 +22,7 @@ public final class NotificationSystem {
     /// 配送完了まで待って return する (クリック待ちの長時間ループは不要 = 再起動で処理される)。
     public func post(
         title: String, subtitle: String?, message: String,
-        pane: String?, sock: String?, term: Activator.Term = .wezterm
+        pane: String?, sock: String?
     ) {
         _ = ensureSetup()
 
@@ -50,7 +50,6 @@ public final class NotificationSystem {
         var info: [String: String] = [:]
         if let pane = pane { info["pane"] = pane }
         if let sock = sock { info["sock"] = sock }
-        info["term"] = term.rawValue
         content.userInfo = info
 
         // 同一ペインの通知は最新で置き換える (スタックさせない)。ペイン不明時は固定 id。

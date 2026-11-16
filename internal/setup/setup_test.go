@@ -11,7 +11,7 @@ func TestIsOwnCommand(t *testing.T) {
 		want bool
 	}{
 		{"claude-code-hooks save", true},
-		{"claude-code-hooks tabcolor idle", true},
+		{"claude-code-hooks stamp --clear", true},
 		{"/opt/homebrew/bin/claude-code-hooks save", true},
 		{"'claude-code-hooks' save", true},
 		{`"claude-code-hooks" save`, true},
@@ -82,7 +82,7 @@ func TestMergeHooksPreservesForeignAndReplacesOwn(t *testing.T) {
 	own := hooksFromJSON(t, `{
 		"Stop": [
 			{"hooks": [
-				{"type":"command","command":"claude-code-hooks tabcolor idle"},
+				{"type":"command","command":"claude-code-hooks stamp --clear"},
 				{"type":"command","command":"claude-code-hooks save"}
 			]}
 		]
@@ -105,7 +105,7 @@ func TestMergeHooksPreservesForeignAndReplacesOwn(t *testing.T) {
 	if joined["claude-code-hooks oldcmd"] {
 		t.Errorf("stale own hook was not removed: %v", stop)
 	}
-	if !joined["claude-code-hooks tabcolor idle"] || !joined["claude-code-hooks save"] {
+	if !joined["claude-code-hooks stamp --clear"] || !joined["claude-code-hooks save"] {
 		t.Errorf("fresh own hooks missing: %v", stop)
 	}
 	if !joined["'/x/claude-event-hook.sh' Idle # notchbar-agents-claude-hook"] {
@@ -121,12 +121,12 @@ func TestMergeHooksPreservesForeignAndReplacesOwn(t *testing.T) {
 func TestMergeHooksNilExisting(t *testing.T) {
 	own := hooksFromJSON(t, `{
 		"SessionStart": [
-			{"hooks": [{"type":"command","command":"claude-code-hooks tabcolor startup"}]}
+			{"hooks": [{"type":"command","command":"claude-code-hooks stamp"}]}
 		]
 	}`)
 	merged := mergeHooks(nil, own)
 	got := collectCommands(t, merged, "SessionStart")
-	if len(got) != 1 || got[0] != "claude-code-hooks tabcolor startup" {
+	if len(got) != 1 || got[0] != "claude-code-hooks stamp" {
 		t.Errorf("nil-existing merge = %v", got)
 	}
 }
@@ -136,12 +136,12 @@ func TestMergeHooksDropsEmptyForeignOnlyOwnEvent(t *testing.T) {
 	// empty entry behind after stripping, before the fresh own hook is added.
 	existing := hooksFromJSON(t, `{
 		"SessionStart": [
-			{"hooks": [{"type":"command","command":"claude-code-hooks tabcolor startup"}]}
+			{"hooks": [{"type":"command","command":"claude-code-hooks stamp"}]}
 		]
 	}`)
 	own := hooksFromJSON(t, `{
 		"SessionStart": [
-			{"hooks": [{"type":"command","command":"claude-code-hooks tabcolor startup"}]}
+			{"hooks": [{"type":"command","command":"claude-code-hooks stamp"}]}
 		]
 	}`)
 	merged := mergeHooks(existing, own)

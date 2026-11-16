@@ -4,10 +4,6 @@
       "hooks": [
         {
           "type": "command",
-          "command": "claude-code-hooks tabcolor startup"
-        },
-        {
-          "type": "command",
           "command": "claude-code-hooks stamp"
         }
       ]
@@ -18,10 +14,6 @@
       "hooks": [
         {
           "type": "command",
-          "command": "claude-code-hooks tabcolor thinking"
-        },
-        {
-          "type": "command",
           "command": "claude-code-hooks save"
         }
       ]
@@ -30,10 +22,6 @@
   "Stop": [
     {
       "hooks": [
-        {
-          "type": "command",
-          "command": "claude-code-hooks tabcolor idle"
-        },
         {
           "type": "command",
           "command": "claude-code-hooks notify 'Claude Code' '作業が完了しました'"
@@ -48,10 +36,6 @@
   "SessionEnd": [
     {
       "hooks": [
-        {
-          "type": "command",
-          "command": "claude-code-hooks tabcolor default"
-        },
         {
           "type": "command",
           "command": "claude-code-hooks stamp --clear"
@@ -86,10 +70,6 @@
       "hooks": [
         {
           "type": "command",
-          "command": "claude-code-hooks tabcolor thinking"
-        },
-        {
-          "type": "command",
           "command": "claude-code-hooks save"
         }
       ]
@@ -98,10 +78,6 @@
   "PermissionRequest": [
     {
       "hooks": [
-        {
-          "type": "command",
-          "command": "claude-code-hooks tabcolor waiting"
-        },
         {
           "type": "command",
           "command": "claude-code-hooks notify 'Claude Code' 'パーミッションが必要です'"
@@ -115,10 +91,6 @@
       "hooks": [
         {
           "type": "command",
-          "command": "claude-code-hooks tabcolor waiting"
-        },
-        {
-          "type": "command",
           "command": "claude-code-hooks notify 'Claude Code' 'ユーザー確認が必要です'"
         }
       ]
@@ -126,10 +98,6 @@
     {
       "matcher": "idle_prompt",
       "hooks": [
-        {
-          "type": "command",
-          "command": "claude-code-hooks tabcolor idle"
-        },
         {
           "type": "command",
           "command": "claude-code-hooks notify 'Claude Code' '待機中です'"

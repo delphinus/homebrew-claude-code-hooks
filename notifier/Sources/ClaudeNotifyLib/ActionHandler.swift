@@ -6,9 +6,9 @@ final class ActionHandler: NSObject {
     var actionHandled = false
     var activationProcess: Process?
 
-    private func activate(pane: String?, sock: String?, term: Activator.Term) {
+    private func activate(pane: String?, sock: String?) {
         guard let pane = pane else { return }
-        activationProcess = Activator.run(pane: pane, sock: sock, term: term)
+        activationProcess = Activator.run(pane: pane, sock: sock)
     }
 
     // MARK: URL scheme (open "claude-code-hooks://activate?pane=...")
@@ -23,7 +23,7 @@ final class ActionHandler: NSObject {
 
     private func handleURL(_ url: URL) {
         guard let params = Activator.parse(url: url) else { return }
-        activate(pane: params.pane, sock: params.sock, term: params.term)
+        activate(pane: params.pane, sock: params.sock)
         actionHandled = true
     }
 }
@@ -59,8 +59,7 @@ extension ActionHandler: UNUserNotificationCenterDelegate {
             let info = response.notification.request.content.userInfo
             activate(
                 pane: info["pane"] as? String,
-                sock: info["sock"] as? String,
-                term: Activator.Term.parse(info["term"] as? String)
+                sock: info["sock"] as? String
             )
         }
         actionHandled = true

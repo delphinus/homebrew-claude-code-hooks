@@ -8,8 +8,8 @@ Claude Code での会話やツール操作を Obsidian ノートに自動記録�
 - **`claude-code-hooks open`** — セッションのノートを Obsidian で開く（引数なしで現在のセッション）
 - **`claude-code-hooks backfill`** — 既存ノートに session リンクをバックフィルする
 - **`claude-code-hooks setup`** — フック設定を `~/.claude/settings.json` に適用する
-- **`claude-code-hooks notify`** — macOS 通知を表示するヘルパー（クリックでペインを前面化。フォーカス検出対応。kitty / WezTerm）
-- **`claude-code-hooks tabcolor`** — Claude Code の状態に応じてタブ色を変える（kitty / WezTerm 対応）
+- **`claude-code-hooks notify`** — macOS 通知を表示するヘルパー（クリックで kitty のウィンドウを前面化。フォーカス検出対応）
+- **`claude-code-hooks stamp`** — kitty のウィンドウにセッション ID を刻み、kitty を終了した後にレイアウトを復元できるようにする
 - **`claude-code-hooks gh-guard`** — `gh` が保護対象ホストに書き込む前に確認プロンプトを強制する
 - **`claude-code-hooks completion`** — シェル補完スクリプトを出力する（Bash / Zsh / Fish 対応）
 
@@ -138,13 +138,13 @@ claude-code-hooks backfill
 
 ### claude-code-hooks notify
 
-macOS の通知を表示する。kitty / WezTerm 使用時は、通知元のペインをいま実際に見ている場合は通知を抑制する。
+macOS の通知を表示する。kitty 使用時は、通知元のウィンドウをいま実際に見ている場合は通知を抑制する。
 
 ```bash
 claude-code-hooks notify 'タイトル' 'メッセージ'
 ```
 
-kitty / WezTerm 内で実行され、かつネイティブヘルパー `claude-code-hooks-notify` が入っている場合は、**クリックすると通知元のペイン（＝そのタブ・ウィンドウ）が前面化する**クリック可能な通知を出す。ヘルパーが無い環境や対応外の端末では、従来どおり `osascript` によるプレーンな通知にフォールバックする（通知自体は必ず出る）。
+kitty 内で実行され、かつネイティブヘルパー `claude-code-hooks-notify` が入っている場合は、**クリックすると通知元のウィンドウ（＝そのタブ）が前面化する**クリック可能な通知を出す。ヘルパーが無い環境や kitty 以外の端末では、従来どおり `osascript` によるプレーンな通知にフォールバックする（通知自体は必ず出る）。
 
 通知のサブタイトルには**通知元のタブ**を `<タブ番号>: <タブタイトル>` の形式で載せる（例: `4: ⠂ 通知にタブ番号とタイトルを表示`）。タブ番号・タイトルはタブバーの表示に合わせてあるので、複数タブで Claude Code を走らせていてもどのセッションからの通知か一目で分かる。タイトルが 40 文字を超える場合は末尾を `…` で省略する。
 
@@ -152,114 +152,18 @@ kitty / WezTerm 内で実行され、かつネイティブヘルパー `claude-c
 - クリック挙動は URL スキームでも叩ける（動作確認用）:
 
   ```bash
-  # kitty
-  open "claude-code-hooks://activate?pane=$KITTY_WINDOW_ID&sock=$KITTY_LISTEN_ON&term=kitty"
-  # WezTerm
-  open "claude-code-hooks://activate?pane=$WEZTERM_PANE&sock=$WEZTERM_UNIX_SOCKET"
+  open "claude-code-hooks://activate?pane=$KITTY_WINDOW_ID&sock=$KITTY_LISTEN_ON"
   ```
 
-  `term` を省略すると `wezterm` として扱う。通知センターに残っている古い通知（`term` を載せていない頃のもの）をクリックしても壊れないようにするため。
+  以前の通知が載せていた `term` パラメータは無視する。
 
 #### 仕組み
 
-macOS の `osascript` の `display notification` はクリック時に任意のアクションを実行できない。そこでクリック可能な通知は、`UserNotifications`（`UNUserNotificationCenter`）を使う署名済みの `.app`（`claude-code-hooks-notify`、Formula が Go バイナリと一緒に配置する）が担う。通知にはペイン ID・ソケット・端末種別を `userInfo` として載せ、クリック時にそれを読んで前面化のコマンドを実行する。ヘルパープロセスが終了した後にクリックされても、LaunchServices がバンドルを再起動して処理するため、フックのプロセスを生かし続ける必要はない。
+macOS の `osascript` の `display notification` はクリック時に任意のアクションを実行できない。そこでクリック可能な通知は、`UserNotifications`（`UNUserNotificationCenter`）を使う署名済みの `.app`（`claude-code-hooks-notify`、Formula が Go バイナリと一緒に配置する）が担う。通知には kitty のウィンドウ ID とソケットを `userInfo` として載せ、クリック時にそれを読んで前面化のコマンドを実行する。ヘルパープロセスが終了した後にクリックされても、LaunchServices がバンドルを再起動して処理するため、フックのプロセスを生かし続ける必要はない。
 
-| | 前面化コマンド | ソケットを渡す環境変数 |
-|---|---|---|
-| kitty | `kitten @ focus-window --match id:<N>` → `open -a kitty` | `KITTY_LISTEN_ON` |
-| WezTerm | `wezterm cli activate-pane --pane-id <N>` → `open -a WezTerm` | `WEZTERM_UNIX_SOCKET` |
+クリック時は `kitten @ focus-window --match id:<N>` → `open -a kitty` を実行し、ソケットは `KITTY_LISTEN_ON` で子プロセスへ渡す。ウィンドウ ID は整数のみ許可する（シェルインジェクション防止）。ソケットはコマンド文字列に直書きしない。前面化に失敗しても `;` 区切りで kitty 自体は前面化する。
 
-ペイン ID は整数のみ許可する（シェルインジェクション防止）。ソケットはコマンド文字列に直書きせず環境変数で子プロセスへ渡す。前面化に失敗しても `;` 区切りでターミナル自体は前面化する。
-
-サブタイトルとフォーカス判定は、端末ごとに次のように解決する。解決に失敗した場合はサブタイトルを付けず、通知は抑制せずに出す。
-
-- **kitty**: `kitten @ ls` 一回で済む。タブタイトルはそのまま取れ、タブ番号は OS ウィンドウ内の並び順（`goto_tab` と同じ数え方）。OS ウィンドウの `is_focused` が「kitty が最前面か」を含んでいるので、フォーカス判定に別途フロントモストのプロセスを調べる必要がない。
-- **WezTerm**: `wezterm cli list --format json` から組み立てる。CLI がタブ番号を返さないため、番号は同じウィンドウ内でタブが現れる順序（タブバーの並び順）から導出する。タイトルは `format-tab-title` と同じ規則で、明示的な `tab_title` があればそれを、無ければタブ内のペインタイトルを重複を除いて `|` で連結したものを使う。フォーカス判定には `osascript` でのフロントモスト判定と `wezterm cli list-clients` が要る。
-
-### claude-code-hooks tabcolor
-
-Claude Code の状態をターミナルのタブ色で可視化する。kitty と WezTerm に対応する。
-
-```bash
-claude-code-hooks tabcolor <startup|thinking|idle|waiting|default>
-```
-
-- kitty (`$KITTY_WINDOW_ID`) を先に見て、無ければ WezTerm (`$WEZTERM_PANE`) を見る。どちらでもなければ何もしない。
-- 装飾目的なので失敗は握り潰し、フックの流れを止めない。
-
-#### 状態と対応イベント
-
-| 状態                  | 意味     | フックイベント                                          |
-| --------------------- | -------- | ------------------------------------------------------- |
-| `startup`             | 起動時   | `SessionStart`                                          |
-| `thinking`            | 思考中   | `UserPromptSubmit` / `PostToolUse`                      |
-| `idle`                | 待機中   | `Stop` / `Notification(idle_prompt)`                    |
-| `waiting`             | 入力待ち | `PermissionRequest` / `Notification(permission_prompt)` |
-| `default`             | 非起動時 | `SessionEnd`（タブ色を通常に戻す）                      |
-
-#### 仕組み: kitty
-
-kitty にはタブ色を直接いじるリモート制御コマンドがあるので、ターミナルへ何も書き込まずに済む。
-
-```bash
-kitten @ set-tab-color --match window_id:$KITTY_WINDOW_ID \
-  active_bg=... active_fg=... inactive_bg=... inactive_fg=...
-```
-
-`--match window_id:` は**そのウィンドウを含むタブ**を指す。フックは Claude Code の子孫として走るので `$KITTY_WINDOW_ID` でウィンドウが特定でき、同じく継承される `$KITTY_LISTEN_ON` で接続先の kitty インスタンスが決まる。`default` は 4 色すべてに `NONE` を渡して `kitty.conf` の色へ戻す。
-
-色は状態ごとに固定で持つ。非アクティブ時の色は、アクティブ時の色を HSL の明度で 25% 暗くしたもの (WezTerm 側で描画時に `Color:darken(0.25)` していたのと同じ値)。前景はいずれの状態でも `#1a1b26`。
-
-| 状態       | `active_bg` | `inactive_bg` |
-| ---------- | ----------- | ------------- |
-| `startup`  | `#7dcfff`   | `#1eacff`     |
-| `thinking` | `#bb9af7`   | `#7c3df0`     |
-| `idle`     | `#9ece6a`   | `#77b03a`     |
-| `waiting`  | `#e0af68`   | `#cc8a2a`     |
-
-kitty 側の設定は不要。
-
-#### 仕組み: WezTerm
-
-WezTerm には user var をセットする CLI が無いため、`claude_state` は OSC 1337 `SetUserVar` エスケープシーケンスで設定し、色に変換するのは `format-tab-title` 側の仕事になる。フックの標準出力は Claude Code にキャプチャされ `/dev/tty` も使えないことがあるので、対話実行で標準出力が端末のときはそこへ、そうでないときは `wezterm cli list` で `$WEZTERM_PANE` の tty デバイスを引いてそこへ書き込む。user var は mux 経由で GUI クライアントへ同期される。
-
-mux 多重化環境では GUI 側のペイン ID が `$WEZTERM_PANE` と一致せず、また Claude のペインがタブのアクティブペインとは限らない。そのため `format-tab-title` 側は `active_pane` だけでなく**タブ内の全ペイン**を走査し、`claude_state` が立っているペインがあればそのタブを塗る。
-
-`wezterm.lua`（または `format-tab-title` を定義しているファイル）で user var を読んでタブを塗る。`use_fancy_tab_bar = true` でもタブ背景に反映される。
-
-```lua
-local STATE_BG = {
-  startup = "#7dcfff",
-  thinking = "#bb9af7",
-  idle = "#9ece6a",
-  waiting = "#e0af68",
-}
-
--- タブ内のいずれかのペインに claude_state が立っていれば、その色を返す
-local function claude_bg(tab)
-  for _, p in ipairs(tab.panes) do
-    local uv = p.user_vars
-    local s = uv and uv.claude_state
-    if s and STATE_BG[s] then
-      return STATE_BG[s]
-    end
-  end
-  return nil
-end
-
-wezterm.on("format-tab-title", function(tab, tabs, panes, config, hover, max_width)
-  local bg = claude_bg(tab)
-  local title = " " .. (tab.active_pane.title or "") .. " "
-  if bg then
-    return {
-      { Background = { Color = bg } },
-      { Foreground = { Color = "#1a1b26" } },
-      { Text = title },
-    }
-  end
-  return title
-end)
-```
+サブタイトルとフォーカス判定は `kitten @ ls` 一回で済む。タブタイトルはそのまま取れ、タブ番号は OS ウィンドウ内の並び順（`goto_tab` と同じ数え方）。OS ウィンドウの `is_focused` が「kitty が最前面か」を含んでいるので、フォーカス判定に別途フロントモストのプロセスを調べる必要がない。解決に失敗した場合はサブタイトルを付けず、通知は抑制せずに出す。
 
 ### claude-code-hooks gh-guard
 

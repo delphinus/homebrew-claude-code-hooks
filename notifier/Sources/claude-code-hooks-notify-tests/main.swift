@@ -19,51 +19,35 @@ func test(_ name: String, _ body: () -> Void) {
 
 print("Running tests...")
 
-test("command: wezterm (既定) -> activate-pane then open") {
+test("command: focus-window then open") {
     let cmd = Activator.command(pane: "10")
-    assert(cmd == "wezterm cli activate-pane --pane-id 10 ; open -a WezTerm", "unexpected command: \(cmd ?? "nil")")
-}
-
-test("command: kitty -> focus-window then open") {
-    let cmd = Activator.command(pane: "10", term: .kitty)
     assert(cmd == "kitten @ focus-window --match id:10 ; open -a kitty", "unexpected command: \(cmd ?? "nil")")
 }
 
 test("command: non-integer pane is rejected (injection guard)") {
-    for term in [Activator.Term.wezterm, .kitty] {
-        assert(Activator.command(pane: "10; rm -rf /", term: term) == nil, "must reject non-integer pane")
-        assert(Activator.command(pane: "", term: term) == nil, "must reject empty pane")
-        assert(Activator.command(pane: "abc", term: term) == nil, "must reject alpha pane")
-    }
-}
-
-test("Term.parse: 未知 / 未指定は wezterm に倒す") {
-    assert(Activator.Term.parse("kitty") == .kitty, "kitty")
-    assert(Activator.Term.parse("KITTY") == .kitty, "大文字も受ける")
-    assert(Activator.Term.parse("wezterm") == .wezterm, "wezterm")
-    assert(Activator.Term.parse(nil) == .wezterm, "未指定は wezterm")
-    assert(Activator.Term.parse("ghostty") == .wezterm, "未知は wezterm")
+    assert(Activator.command(pane: "10; rm -rf /") == nil, "must reject non-integer pane")
+    assert(Activator.command(pane: "") == nil, "must reject empty pane")
+    assert(Activator.command(pane: "abc") == nil, "must reject alpha pane")
 }
 
 test("parse: valid activate URL with pane and sock") {
-    let url = URL(string: "claude-code-hooks://activate?pane=10&sock=/tmp/w.sock")!
+    let url = URL(string: "claude-code-hooks://activate?pane=10&sock=unix:/tmp/kitty-1")!
     let p = Activator.parse(url: url)
-    assert(p == Activator.Params(pane: "10", sock: "/tmp/w.sock"), "unexpected params: \(String(describing: p))")
+    assert(p == Activator.Params(pane: "10", sock: "unix:/tmp/kitty-1"), "unexpected params: \(String(describing: p))")
 }
 
-test("parse: pane only (no sock) -> sock nil, term は wezterm") {
+test("parse: pane only (no sock) -> sock nil") {
     let url = URL(string: "claude-code-hooks://activate?pane=7")!
     let p = Activator.parse(url: url)
     assert(p == Activator.Params(pane: "7", sock: nil), "unexpected params: \(String(describing: p))")
 }
 
-test("parse: term=kitty を拾う") {
-    let url = URL(string: "claude-code-hooks://activate?pane=7&sock=unix:/tmp/kitty-1&term=kitty")!
-    let p = Activator.parse(url: url)
-    assert(
-        p == Activator.Params(pane: "7", sock: "unix:/tmp/kitty-1", term: .kitty),
-        "unexpected params: \(String(describing: p))"
-    )
+test("parse: 以前の通知の term パラメータは無視する") {
+    for term in ["kitty", "wezterm"] {
+        let url = URL(string: "claude-code-hooks://activate?pane=7&sock=unix:/tmp/kitty-1&term=\(term)")!
+        let p = Activator.parse(url: url)
+        assert(p == Activator.Params(pane: "7", sock: "unix:/tmp/kitty-1"), "unexpected params: \(String(describing: p))")
+    }
 }
 
 test("parse: wrong scheme -> nil") {

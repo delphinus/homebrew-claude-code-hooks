@@ -11,9 +11,8 @@ import (
 // kittyTab resolves the subtitle label and the "is this pane being looked at
 // right now?" flag for a kitty window, in a single `kitten @ ls` round trip.
 //
-// This is considerably less work than the WezTerm side needs: kitty reports the
-// tab title directly (no reconstructing it from pane titles) and its OS windows
-// carry is_focused, so no separate frontmost-process lookup is required.
+// kitty reports the tab title directly and its OS windows carry is_focused, so
+// no separate frontmost-process lookup is required.
 //
 // On any failure it returns ("", false): no subtitle, and the notification is
 // shown rather than suppressed.
