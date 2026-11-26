@@ -204,3 +204,38 @@ func TestRenderNoEnded(t *testing.T) {
 		t.Error("should omit ended when empty")
 	}
 }
+
+func TestParseBodyStartsAfterClosingDelimiter(t *testing.T) {
+	_, body, err := Parse("---\nid: x\n---\n\nBody\n")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if body != "\nBody\n" {
+		t.Errorf("body = %q, want %q", body, "\nBody\n")
+	}
+}
+
+func TestParseBodyAtEndOfFile(t *testing.T) {
+	_, body, err := Parse("---\nid: x\n---")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if body != "" {
+		t.Errorf("body = %q, want empty", body)
+	}
+}
+
+func TestRenderParseKeepsBody(t *testing.T) {
+	content := "---\nid: x\naliases:\n  - T\ntags:\n  - claude-code\ndate: 2026-06-29T11:28:00\nsession_id: s\nhostname: h\ncwd: /tmp\n---\n\n> [!question] User (09:30:00)\n> hello\n"
+	for i := 0; i < 3; i++ {
+		fm, body, err := Parse(content)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		got := fm.Render() + body
+		if got != content {
+			t.Fatalf("round %d changed the note:\n got %q\nwant %q", i+1, got, content)
+		}
+		content = got
+	}
+}

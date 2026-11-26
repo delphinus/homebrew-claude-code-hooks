@@ -187,6 +187,22 @@ func TestSetEnded(t *testing.T) {
 	}
 }
 
+func TestSetEndedDoesNotAddBlankLines(t *testing.T) {
+	dir := t.TempDir()
+	notePath := filepath.Join(dir, "n.md")
+	content := "---\nid: x\naliases:\n  - T\ntags:\n  - claude-code\ndate: 2026-06-29T11:28:00\nsession_id: s\nhostname: h\ncwd: /tmp\n---\n\nbody\n"
+	os.WriteFile(notePath, []byte(content), 0o644)
+
+	setEnded(notePath, "2026-06-29T18:02:33")
+	setEnded(notePath, "2026-06-29T18:05:00")
+
+	got, _ := os.ReadFile(notePath)
+	want := "---\nid: x\naliases:\n  - T\ntags:\n  - claude-code\ndate: 2026-06-29T11:28:00\nended: 2026-06-29T18:05:00\nsession_id: s\nhostname: h\ncwd: /tmp\n---\n\nbody\n"
+	if string(got) != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
 func TestSummaryTimeLine(t *testing.T) {
 	if got := summaryTimeLine("2026-06-29T10:36:00", "2026-06-29T18:02:00"); got != "⏱ 10:36–18:02 (7h26m)" {
 		t.Errorf("got %q", got)

@@ -38,9 +38,11 @@ func Parse(content string) (*Frontmatter, string, error) {
 	}
 
 	yamlStr := rest[:end]
-	body := rest[end+4:] // skip "\n---\n"
-	if strings.HasSuffix(rest, "\n---") && end == len(rest)-3 {
-		body = ""
+	// The body starts after the whole closing "\n---\n" (5 bytes). When the
+	// file ends with "\n---" there is no body.
+	body := ""
+	if end+5 <= len(rest) {
+		body = rest[end+5:]
 	}
 
 	fm := &Frontmatter{}
